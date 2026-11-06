@@ -1,0 +1,73 @@
+# ============================================================
+# proxylane — Cloudflare Worker 配置
+# 部署：npx wrangler deploy
+# ============================================================
+
+name = "proxylane"
+main = "src/index.js"
+compatibility_date = "2026-11-06"
+
+# 👇 保留 workers.dev 备用入口（自定义域名出问题时仍可访问）
+workers_dev = true
+
+# ============================================================
+# 自定义域名（这一段是"部署时"配置，不能写进 [vars]）
+# 想只保留默认 workers.dev 入口时，把下面两行注释掉即可。
+# 前提：hanser.cv 已托管在同一 Cloudflare 账号且 NS 已生效。
+# ============================================================
+[[routes]]
+pattern = "proxy.hanser.cv"
+custom_domain = true
+
+# ---------------- 静态页面（Workers Static Assets，不用 Pages）----------------
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
+# ---------------- KV：存放聚合结果 ----------------
+# 首次部署前必须创建：npx wrangler kv namespace create PROXY_KV
+# 把输出的 id 填到下面。
+[[kv_namespaces]]
+binding = "PROXY_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# ---------------- 定时抓取（当前方案 B：已关闭）----------------
+# 方案 B = 抓取/验证在 GitHub Actions 里做，结果写 KV，Worker 只读不写。
+# 免费版 CPU 只有 10ms，Worker 内的全量刷新会报 "exceeded CPU time limit"，
+# 所以这里默认注释掉。如果以后升级到 Workers Paid，想改回 Worker 自己抓：
+#   1) 取消下面两行注释
+#   2) 把 [vars] 里的 NO_SELF_REFRESH 改成 "0"
+# [triggers]
+# crons = ["7 * * * *"]
+
+# ============================================================
+# 运行时变量（这里才是可以随意改的参数）
+# ============================================================
+[vars]
+# 站点域名：控制页面标题 / 文档示例 / 订阅链接展示
+# 留空则自动使用请求的 origin
+SITE_DOMAIN = "proxy.hanser.cv"
+
+# 仓库地址（页脚 GitHub 链接）
+REPO_URL = "https://github.com/YOUR_NAME/proxylane"
+
+# 单次刷新的记录上限（方案 B 下仅影响 /v1/refresh 手动触发；
+# Actions 端有自己的上限，见 scripts/sync.mjs）
+MAX_RECORDS = "12000"
+
+# 单源抓取超时（毫秒）—— 仅在 NO_SELF_REFRESH = "0" 时生效
+FETCH_TIMEOUT_MS = "15000"
+
+# "1" = Worker 永不自己抓取，只读 KV（方案 B 默认值）
+# "0" = 恢复 Worker 内部定时刷新（需 Workers Paid）
+NO_SELF_REFRESH = "1"
+
+# 预留：设置后可通过 /v1/refresh?token=xxx 手动触发刷新
+# ADMIN_TOKEN = "change-me"
+
+# 源清单（JSON 数组，留空则使用 src/core.js 里的 DEFAULT_SOURCES）
+# 想增删源直接改这里，不用动代码。示例：
+# SOURCES = """[{"id":"monosans","name":"monosans/proxy-list","tier":1,"verified":true,"parser":"monosans","url":"https://raw.githubusercontent.com/monosans/proxy-list/main/proxies.json","home":"https://github.com/monosans/proxy-list"}]"""
+SOURCES = ""

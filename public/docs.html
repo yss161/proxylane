@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ProxyLane · API 文档</title>
+<meta name="description" content="Free public proxy-list API on Cloudflare Workers. Hourly refresh, geo/ASN metadata, Clash / Surge / sing-box / base64 subscriptions." />
+<link rel="stylesheet" href="/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌐</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="logo">Proxy<span>Lane</span></div>
+  <nav>
+    <a href="/" class="" data-i18n="nav_home">首页</a>
+    <a href="/docs" class="active" data-i18n="nav_docs">接口文档</a>
+    <a href="/stats" class="" data-i18n="nav_stats">运行状态</a>
+  </nav>
+  <div class="spacer"></div>
+  <button class="lang-btn" id="langBtn">EN</button>
+</header>
+<main class="wrap">
+  <h1>API Docs</h1>
+  <p class="muted">所有接口为 <code>GET</code>，CORS 全开，无需 API Key。单次最多返回 5000 条。</p>
+
+  <h2>端点</h2>
+  <table class="params">
+    <thead><tr><th>端点</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>/v1/proxies</td><td>主接口，支持全部筛选参数与 7 种输出格式</td></tr>
+      <tr><td>/v1/all.txt</td><td>全部代理，纯文本 <code>ip:port</code></td></tr>
+      <tr><td>/v1/http.txt</td><td>仅 http 协议</td></tr>
+      <tr><td>/v1/https.txt</td><td>仅 https 协议</td></tr>
+      <tr><td>/v1/socks4.txt</td><td>仅 socks4 协议</td></tr>
+      <tr><td>/v1/socks5.txt</td><td>仅 socks5 协议</td></tr>
+      <tr><td>/v1/random</td><td>随机返回一条；<code>?format=json</code> 返回结构化数据</td></tr>
+      <tr><td>/v1/stats</td><td>总量、协议分布、来源健康状态</td></tr>
+      <tr><td>/v1/sources</td><td>源清单及其最近一次抓取结果</td></tr>
+      <tr><td>/v1/config</td><td>站点配置、支持的格式与参数（供前端读取）</td></tr>
+      <tr><td>/v1/health</td><td>存活探针</td></tr>
+    </tbody>
+  </table>
+
+  <h2>查询参数</h2>
+  <table class="params">
+    <thead><tr><th>参数</th><th>取值</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>format</td><td>json / txt / csv / clash / base64 / surge / singbox</td><td>默认 json</td></tr>
+      <tr><td>protocol</td><td>http,https,socks4,socks5 或 socks</td><td>逗号分隔多选</td></tr>
+      <tr><td>country</td><td>ISO 两位国家码</td><td>逗号分隔多选，如 <code>US,JP</code></td></tr>
+      <tr><td>anonymity</td><td>transparent / anonymous / elite</td><td>匿名度</td></tr>
+      <tr><td>source</td><td>monosans / proxifly / …</td><td>按来源过滤</td></tr>
+      <tr><td>max_latency</td><td>毫秒</td><td>仅返回有延迟数据且低于该值的条目</td></tr>
+      <tr><td>verified</td><td>true / false</td><td>仅上游已验证</td></tr>
+      <tr><td>sort</td><td>quality / latency / country / random</td><td>默认 quality</td></tr>
+      <tr><td>limit</td><td>1–5000</td><td>默认值随格式变化</td></tr>
+      <tr><td>offset</td><td>≥0</td><td>分页偏移</td></tr>
+    </tbody>
+  </table>
+
+  <h2>响应头</h2>
+  <table class="params">
+    <thead><tr><th>Header</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>x-total-count</td><td>符合筛选条件的总条数</td></tr>
+      <tr><td>x-returned</td><td>本次实际返回条数</td></tr>
+      <tr><td>x-total-pool</td><td>整个池子的条数</td></tr>
+      <tr><td>x-dropped-unsupported</td><td>目标格式不支持而被剔除的条数</td></tr>
+    </tbody>
+  </table>
+
+  <h2>示例</h2>
+  <pre class="code"># 只要美国 &amp; 日本、延迟低于 800ms 的前 50 条
+curl "https://proxy.hanser.cv/v1/proxies?country=US,JP&amp;max_latency=800&amp;limit=50" 
+
+# Clash 订阅
+curl "https://proxy.hanser.cv/v1/proxies?format=clash&amp;verified=true&amp;limit=500" -o proxylane.yaml
+
+# 随机一个 socks5
+curl "https://proxy.hanser.cv/v1/random?protocol=socks5"</pre>
+
+  <h2>客户端兼容性</h2>
+  <table class="params">
+    <thead><tr><th>客户端</th><th>用哪个格式</th></tr></thead>
+    <tbody>
+      <tr><td>Clash Verge / Mihomo / Stash</td><td><code>format=clash</code></td></tr>
+      <tr><td>Shadowrocket（小火箭）</td><td><code>format=base64</code>（走 <code>http://</code> / <code>socks5://</code> URI 订阅）</td></tr>
+      <tr><td>v2rayN / NekoBox / sing-box</td><td><code>format=base64</code> 或 <code>format=singbox</code></td></tr>
+      <tr><td>Surge</td><td><code>format=surge</code></td></tr>
+      <tr><td>自建脚本 / 爬虫</td><td><code>format=txt</code></td></tr>
+    </tbody>
+  </table>
+</main>
+<footer class="foot">
+  <div data-i18n="foot_sources">数据来源</div>
+  <div style="margin:8px 0">
+    <a href="https://github.com/monosans/proxy-list" target="_blank" rel="noopener">monosans</a> ·
+    <a href="https://github.com/proxifly/free-proxy-list" target="_blank" rel="noopener">proxifly</a> ·
+    <a href="https://github.com/TheSpeedX/PROXY-List" target="_blank" rel="noopener">TheSpeedX</a> ·
+    <a href="https://github.com/roosterkid/openproxylist" target="_blank" rel="noopener">roosterkid</a>
+  </div>
+  <div data-i18n="foot_built">由 Cloudflare Workers 驱动 · 每小时自动刷新</div>
+</footer>
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

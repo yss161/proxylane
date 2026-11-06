@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ProxyLane · 公共代理聚合</title>
+<meta name="description" content="Free public proxy-list API on Cloudflare Workers. Hourly refresh, geo/ASN metadata, Clash / Surge / sing-box / base64 subscriptions." />
+<link rel="stylesheet" href="/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌐</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="logo">Proxy<span>Lane</span></div>
+  <nav>
+    <a href="/" class="active" data-i18n="nav_home">首页</a>
+    <a href="/docs" class="" data-i18n="nav_docs">接口文档</a>
+    <a href="/stats" class="" data-i18n="nav_stats">运行状态</a>
+  </nav>
+  <div class="spacer"></div>
+  <button class="lang-btn" id="langBtn">EN</button>
+</header>
+<main class="wrap">
+  <div class="alert"><b>⚠</b> <span data-i18n="warn">公开代理未经审计，可能记录或篡改流量。请勿通过它们传输账号密码、令牌等敏感信息。</span></div>
+
+  <div class="grid grid-4" style="margin-bottom:14px">
+    <div class="card"><div class="stat"><span class="v" id="stTotal">—</span><span class="k" data-i18n="stats_total">代理总数</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="stVerified">—</span><span class="k" data-i18n="stats_verified">上游已验证</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="stCountries">—</span><span class="k" data-i18n="stats_countries">国家/地区</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="stUpdated" style="font-size:15px">—</span><span class="k" data-i18n="stats_updated">最近刷新</span></div></div>
+  </div>
+
+  <h2 data-i18n="sub_title">订阅地址</h2>
+  <div class="grid grid-4">
+    <div class="card">
+      <h3 data-i18n="card_txt">纯文本列表</h3>
+      <div class="hint" data-i18n="card_txt_hint">ip:port 一行一个</div>
+      <div class="urlbox"><input readonly data-url="/v1/all.txt" /><button class="btn" data-sub="/v1/all.txt" data-i18n="copy">复制</button></div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="card_clash">Clash / Mihomo</h3>
+      <div class="hint" data-i18n="card_clash_hint">Clash Verge、Mihomo、Stash</div>
+      <div class="urlbox"><input readonly data-url="/v1/proxies?format=clash&verified=true&limit=500" /><button class="btn" data-sub="/v1/proxies?format=clash&verified=true&limit=500" data-i18n="copy">复制</button></div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="card_b64">Base64 订阅</h3>
+      <div class="hint" data-i18n="card_b64_hint">Shadowrocket、v2rayN、NekoBox</div>
+      <div class="urlbox"><input readonly data-url="/v1/proxies?format=base64&verified=true&limit=300" /><button class="btn" data-sub="/v1/proxies?format=base64&verified=true&limit=300" data-i18n="copy">复制</button></div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="card_surge">Surge</h3>
+      <div class="hint" data-i18n="card_surge_hint">Surge 配置片段</div>
+      <div class="urlbox"><input readonly data-url="/v1/proxies?format=surge&limit=200" /><button class="btn" data-sub="/v1/proxies?format=surge&limit=200" data-i18n="copy">复制</button></div>
+    </div>
+  </div>
+
+  <h2 data-i18n="filter_title">筛选</h2>
+  <div class="filters">
+    <div class="field"><label data-i18n="f_protocol">协议</label>
+      <select id="fProto"><option value="all" data-i18n="all">全部</option><option value="http">http</option><option value="https">https</option><option value="socks4">socks4</option><option value="socks5">socks5</option></select></div>
+    <div class="field"><label data-i18n="f_country">国家码</label><input id="fCountry" placeholder="US,JP" size="8" /></div>
+    <div class="field"><label data-i18n="f_latency">延迟上限 (ms)</label><input id="fLatency" placeholder="800" size="8" /></div>
+    <div class="field"><label data-i18n="f_source">来源</label>
+      <select id="fSource"><option value="all" data-i18n="all">全部</option><option value="monosans">monosans</option><option value="proxifly">proxifly</option><option value="thespeedx-http">thespeedx-http</option><option value="thespeedx-socks5">thespeedx-socks5</option><option value="roosterkid">roosterkid</option></select></div>
+    <div class="field"><label data-i18n="f_sort">排序</label>
+      <select id="fSort"><option value="quality" data-i18n="sort_quality">质量优先</option><option value="latency" data-i18n="sort_latency">延迟最低</option><option value="country" data-i18n="sort_country">按国家</option><option value="random" data-i18n="sort_random">随机</option></select></div>
+    <div class="field"><label data-i18n="f_verified">仅已验证</label><label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--text)"><input type="checkbox" id="fVerified" checked /> <span class="pill">verified</span></label></div>
+    <button class="btn" id="applyBtn" data-i18n="f_apply">应用</button>
+    <button class="btn ghost" id="resetBtn" data-i18n="f_reset">重置</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr>
+        <th data-i18n="th_proxy">地址</th><th data-i18n="th_proto">协议</th><th data-i18n="th_country">国家</th>
+        <th data-i18n="th_latency">延迟</th><th data-i18n="th_source">来源</th><th data-i18n="th_verified">状态</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="muted">…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <button class="btn ghost" id="prevBtn" data-i18n="prev">上一页</button>
+    <span class="pill" id="pageInfo">—</span>
+    <button class="btn ghost" id="nextBtn" data-i18n="next">下一页</button>
+  </div>
+</main>
+<footer class="foot">
+  <div data-i18n="foot_sources">数据来源</div>
+  <div style="margin:8px 0">
+    <a href="https://github.com/monosans/proxy-list" target="_blank" rel="noopener">monosans</a> ·
+    <a href="https://github.com/proxifly/free-proxy-list" target="_blank" rel="noopener">proxifly</a> ·
+    <a href="https://github.com/TheSpeedX/PROXY-List" target="_blank" rel="noopener">TheSpeedX</a> ·
+    <a href="https://github.com/roosterkid/openproxylist" target="_blank" rel="noopener">roosterkid</a>
+  </div>
+  <div data-i18n="foot_built">由 Cloudflare Workers 驱动 · 每小时自动刷新</div>
+</footer>
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

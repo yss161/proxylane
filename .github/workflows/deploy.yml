@@ -1,0 +1,26 @@
+# 手动部署（可选）
+#
+# 如果你已经在 Cloudflare Dashboard 里用 "Workers Builds" 绑定了本仓库做自动部署，
+# 那么这个工作流是多余的，保持只有手动触发即可（默认就是这样，不会冲突）。
+#
+# 想改用 Actions 部署：把下面的 workflow_dispatch 换成 push，并配好 secrets。
+
+name: deploy-worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler@4 deploy

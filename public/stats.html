@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ProxyLane · 运行状态</title>
+<meta name="description" content="Free public proxy-list API on Cloudflare Workers. Hourly refresh, geo/ASN metadata, Clash / Surge / sing-box / base64 subscriptions." />
+<link rel="stylesheet" href="/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌐</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="logo">Proxy<span>Lane</span></div>
+  <nav>
+    <a href="/" class="" data-i18n="nav_home">首页</a>
+    <a href="/docs" class="" data-i18n="nav_docs">接口文档</a>
+    <a href="/stats" class="active" data-i18n="nav_stats">运行状态</a>
+  </nav>
+  <div class="spacer"></div>
+  <button class="lang-btn" id="langBtn">EN</button>
+</header>
+<main class="wrap">
+  <h1>Status</h1>
+  <div class="grid grid-4" style="margin-bottom:18px">
+    <div class="card"><div class="stat"><span class="v" id="sTotal">—</span><span class="k">total</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="sVerified">—</span><span class="k">verified</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="sCountries">—</span><span class="k">countries</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="sDuration" style="font-size:15px">—</span><span class="k">refresh cost</span></div></div>
+  </div>
+  <p class="muted">last refresh: <span id="sUpdated">—</span></p>
+
+  <h2>协议分布</h2>
+  <div class="card" style="padding:0"><table><thead><tr><th>protocol</th><th>count</th></tr></thead><tbody id="protoRows"><tr><td colspan="2" class="muted">—</td></tr></tbody></table></div>
+
+  <h2>来源健康</h2>
+  <div class="card" style="padding:0;overflow:hidden"><table>
+    <thead><tr><th>source</th><th>tier</th><th>state</th><th>count</th><th>cost</th><th>error</th></tr></thead>
+    <tbody id="srcRows"><tr><td colspan="6" class="muted">—</td></tr></tbody>
+  </table></div>
+</main>
+<footer class="foot">
+  <div data-i18n="foot_sources">数据来源</div>
+  <div style="margin:8px 0">
+    <a href="https://github.com/monosans/proxy-list" target="_blank" rel="noopener">monosans</a> ·
+    <a href="https://github.com/proxifly/free-proxy-list" target="_blank" rel="noopener">proxifly</a> ·
+    <a href="https://github.com/TheSpeedX/PROXY-List" target="_blank" rel="noopener">TheSpeedX</a> ·
+    <a href="https://github.com/roosterkid/openproxylist" target="_blank" rel="noopener">roosterkid</a>
+  </div>
+  <div data-i18n="foot_built">由 Cloudflare Workers 驱动 · 每小时自动刷新</div>
+</footer>
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "proxylane",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Public proxy-list aggregator on Cloudflare Workers — hourly refresh, geo/ASN metadata, Clash/Surge/sing-box/base64 subscriptions.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "kv:create": "wrangler kv namespace create PROXY_KV",
+    "sync:dry": "node scripts/sync.mjs --dry-run"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

@@ -1,0 +1,73 @@
+# 方案 B 主路径：GitHub Actions 抓取 + 真实探活 + 回写 Cloudflare KV
+#
+# 为什么这么做：Workers 免费版每次调用 CPU 上限只有 10ms，
+# 一次全量刷新（5 个源 / 2.2 万条 / 解析 + 去重 + 排序）远超这个限制，
+# 会报 "Worker exceeded CPU time limit"。所以把重活搬到 Actions，
+# Worker 只负责读 KV 并输出，跑在免费版上毫无压力。
+#
+# 公开仓库的 Actions 分钟数不设上限，所以每 30 分钟跑一次是免费的。
+#
+# ⚠️ 唯一需要留意的坑：
+#   GitHub 会自动禁用"连续 60 天无代码提交"的仓库的定时工作流。
+#   本工作流最后一次 step 会在每月 1 号提交一个心跳文件，自动规避这条规则。
+#
+# 需要的 Secrets（Settings → Secrets and variables → Actions）：
+#   CF_ACCOUNT_ID      Cloudflare 账号 ID
+#   CF_API_TOKEN       权限仅需 "Workers KV Storage: Edit" 的 API Token
+#   KV_NAMESPACE_ID    PROXY_KV 的 namespace id
+
+name: sync-kv
+
+on:
+  schedule:
+    # 每 30 分钟一次。GitHub 的 cron 是 best-effort，实际可能延迟 5~15 分钟。
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-kv
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Scrape + verify + push to KV
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+          # 每轮最多验证多少条（越大越慢，4000 条约 3~5 分钟）
+          VERIFY_LIMIT: '4000'
+          # 单条探活超时
+          VERIFY_TIMEOUT_MS: '4000'
+          # 探活目标（选一个大多数代理都放行、且不挡数据中心 IP 的地址）
+          TARGET_HOST: '1.1.1.1'
+          TARGET_PORT: '443'
+        run: node scripts/sync.mjs
+
+      # 心跳：每月 1 号提交一行，避免 60 天无提交导致定时任务被 GitHub 禁用
+      - name: Keep-alive commit
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date +%d)" != "01" ]; then
+            echo "not the 1st, skip"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p .github
+          echo "last keep-alive: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/keepalive.txt
+          git add .github/keepalive.txt
+          git commit -m "chore: keep-alive $(date -u +%Y-%m)" || exit 0
+          git push
