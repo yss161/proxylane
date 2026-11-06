@@ -51,7 +51,7 @@ id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 SITE_DOMAIN = "proxy.hanser.cv"
 
 # 仓库地址（页脚 GitHub 链接）
-REPO_URL = "https://github.com/YOUR_NAME/proxylane"
+REPO_URL = "https://github.com/yss161/proxylane"
 
 # 单次刷新的记录上限（方案 B 下仅影响 /v1/refresh 手动触发；
 # Actions 端有自己的上限，见 scripts/sync.mjs）

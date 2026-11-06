@@ -1,9 +1,13 @@
 # ProxyLane
 
+[![sync-kv](https://github.com/yss161/proxylane/actions/workflows/sync.yml/badge.svg)](https://github.com/yss161/proxylane/actions/workflows/sync.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 公共代理聚合服务，跑在 **Cloudflare Workers 免费版**上。
 
 - **数据管线**：GitHub Actions 每 30 分钟抓取 4 个公开源 → 去重合并 → **真实握手探活**（HTTP CONNECT / SOCKS5 / SOCKS4）→ 写入 Cloudflare KV
 - **对外服务**：Worker 只读 KV，输出 **TXT / JSON / CSV / Clash / Base64 / Surge / sing-box** 七种格式
+- **仓库**：https://github.com/yss161/proxylane
 - **站点**：`https://proxy.hanser.cv`（备用 `https://proxylane.<子域>.workers.dev`）
 
 > 为什么拆成两段？免费版 Worker 每次调用 CPU 上限只有 **10ms**，
