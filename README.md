@@ -59,6 +59,8 @@
 
 ## 部署步骤
 
+> 📘 **完整步骤、排错表、客户端导入说明见 [DEPLOY.md](DEPLOY.md)**
+
 ### 0. 前置
 
 - Cloudflare 账号，`hanser.cv` 已托管在同一账号且 NS 生效
