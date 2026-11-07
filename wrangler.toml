@@ -31,7 +31,7 @@ not_found_handling = "none"
 # 把输出的 id 填到下面。
 [[kv_namespaces]]
 binding = "PROXY_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "9670cb9fbf5540d3b5721e623da84f3d"
 
 # ---------------- 定时抓取（当前方案 B：已关闭）----------------
 # 方案 B = 抓取/验证在 GitHub Actions 里做，结果写 KV，Worker 只读不写。
