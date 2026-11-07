@@ -185,17 +185,28 @@ async function putKV(accountId, token, nsId, key, value) {
 // main
 // ---------------------------------------------------------------
 async function main() {
+  const t0 = Date.now();
   log('[1/3] 抓取源 …');
   const pool = await collectPool(DEFAULT_SOURCES, { maxRecords: 20000, timeoutMs: 20000 });
   log('[1/3] 抓到 ' + pool.rawCount + ' 条，合并后 ' + pool.records.length + ' 条');
 
   log('[2/3] 真实探活（上限 ' + VERIFY_LIMIT + ' 条，目标 ' + TARGET_HOST + ':' + TARGET_PORT + '）…');
-  const alive = await verifyAll(pool.records, VERIFY_LIMIT, VERIFY_TIMEOUT_MS, CONCURRENCY);
+  // 取样策略：前 75% 按质量排序（稳定），后 25% 从剩余池里随机抽（轮换，
+  // 让排名靠后的代理也有机会被验证到，否则永远只有同一批 4000 条被试）
+  const stableCount = Math.floor(VERIFY_LIMIT * 0.75);
+  const stable = pool.records.slice(0, stableCount);
+  const rest = pool.records.slice(stableCount);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = rest[i]; rest[i] = rest[j]; rest[j] = t;
+  }
+  const candidates = stable.concat(rest.slice(0, Math.max(0, VERIFY_LIMIT - stableCount)));
+  const alive = await verifyAll(candidates, candidates.length, VERIFY_TIMEOUT_MS, CONCURRENCY);
 
   const merged = sortRecords(mergeRecords(alive), 'latency');
   const meta = {
     updatedAt: new Date().toISOString(),
-    durationMs: 0,
+    durationMs: Date.now() - t0,
     total: merged.length,
     rawCount: pool.rawCount,
     protocols: countBy(merged, 'proto'),
