@@ -3,10 +3,10 @@
 [![sync-kv](https://github.com/yss161/proxylane/actions/workflows/sync.yml/badge.svg)](https://github.com/yss161/proxylane/actions/workflows/sync.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-公共代理聚合服务，跑在 **Cloudflare Workers 免费版**上。
+公开翻墙节点搜索服务，跑在 **Cloudflare Workers 免费版**上。
 
-- **数据管线**：GitHub Actions 每 30 分钟抓取 4 个公开源 → 去重合并 → **真实握手探活**（HTTP CONNECT / SOCKS5 / SOCKS4）→ 写入 Cloudflare KV
-- **对外服务**：Worker 只读 KV，输出 **TXT / JSON / CSV / Clash / Base64 / Surge / sing-box** 七种格式
+- **数据管线**：GitHub Actions 每 30 分钟抓取公开订阅 → 解析 **ss / ssr / vmess / vless / trojan / hysteria2 / tuic** 分享链接 → 去重合并 → **TCP 端口探活** → 写入 Cloudflare KV
+- **对外服务**：Worker 只读 KV，支持关键词搜索，输出 **TXT / JSON / CSV / Clash / Base64 / Surge / sing-box** 七种格式
 - **仓库**：https://github.com/yss161/proxylane
 - **站点**：`https://proxy.hanser.cv`（备用 `https://proxylane.<子域>.workers.dev`）
 
@@ -21,14 +21,14 @@
 
 ```
    GitHub Actions (每 30 分钟, 公开仓库免费无限分钟)
-   ├─ fetch 4 个源 ──► 解析 2.2 万条 ──► 去重合并 ──► 真实握手探活
+   ├─ fetch 公开订阅 ──► 解析分享链接 ──► 去重合并 ──► TCP 探活
    │                                                    │
    │                              PUT KV API            ▼
    └───────────────────────────────► Cloudflare KV ──────────┐
-                                        (pool:v1 / meta:v1)  │
+                                        (pool:v2 / meta:v2)  │
                                                              ▼
    客户端 ◄── Worker (读 KV + Cache API) ◄── proxy.hanser.cv
-              ├─ /            首页（统计 / 订阅卡片 / 筛选列表）
+              ├─ /            首页（统计 / 订阅卡片 / 节点搜索）
               ├─ /docs        接口文档
               ├─ /stats       源健康状态
               └─ /v1/*        JSON / TXT / Clash / Base64 / Surge / sing-box
@@ -114,46 +114,52 @@ Actions → **sync-kv** → Run workflow。
 
 | 端点 | 说明 |
 |---|---|
-| `GET /v1/proxies` | 主接口，全部筛选参数 + 7 种格式 |
-| `GET /v1/all.txt` `/v1/http.txt` `/v1/https.txt` `/v1/socks4.txt` `/v1/socks5.txt` | 纯文本列表 |
+| `GET /v1/proxies` | 主接口：关键词搜索 + 全部筛选参数 + 7 种格式 |
+| `GET /v1/all.txt` `/v1/ss.txt` `/v1/vmess.txt` `/v1/vless.txt` `/v1/trojan.txt` `/v1/hysteria2.txt` | 纯文本分享链接 |
 | `GET /v1/random` | 随机一条（`?format=json` 返回结构化） |
 | `GET /v1/stats` | 总量 / 协议分布 / 来源健康 |
 | `GET /v1/sources` | 源清单 + 最近一次抓取结果 |
 | `GET /v1/config` | 站点配置 / 支持格式 / 参数表 |
 | `GET /v1/health` | 存活探针 |
 
-**参数**：`format` `protocol` `country` `anonymity` `source` `max_latency` `verified` `sort` `limit` `offset`
+**参数**：`q` `format` `protocol` `country` `network` `security` `source` `max_latency` `verified` `sort` `limit` `offset`
 
 **客户端对照**：
 
 | 客户端 | 订阅地址 |
 |---|---|
-| Clash Verge / Mihomo / Stash | `/v1/proxies?format=clash&limit=500` |
-| Shadowrocket（小火箭） | `/v1/proxies?format=base64&protocol=http,socks5&limit=300` |
-| v2rayN / NekoBox | `/v1/proxies?format=base64&limit=300` |
-| sing-box | `/v1/proxies?format=singbox&limit=300` |
-| Surge | `/v1/proxies?format=surge&limit=200` |
+| Clash Verge / Mihomo / Stash | `/v1/proxies?format=clash&verified=true&limit=500` |
+| Shadowrocket（小火箭） | `/v1/proxies?format=base64&verified=true&limit=300` |
+| v2rayN / NekoBox | `/v1/proxies?format=base64&verified=true&limit=300` |
+| sing-box | `/v1/proxies?format=singbox&verified=true&limit=300` |
+| Surge | `/v1/proxies?format=surge&verified=true&limit=200` |
 | 自建脚本 | `/v1/all.txt` |
 
-> Shadowrocket 对 `socks4://` URI 支持不稳定，所以给它单独加了 `protocol=http,socks5` 过滤；
-> clash / surge / sing-box 三种格式在服务端已自动剔除 socks4（响应头 `x-dropped-unsupported` 会告诉你剔了多少条）。
+**搜索示例**：
+
+```bash
+# 美国 Reality 节点
+/v1/proxies?q=US&protocol=vless&security=reality&limit=50
+
+# 只要 Trojan
+/v1/proxies?protocol=trojan&format=base64
+```
 
 ---
 
 ## 数据源
 
-| 源 | tier | 上游是否验证 |
+| 源 | tier | 内容 |
 |---|---|---|
-| `monosans/proxy-list` | 1 | ✅ 每小时验证，带延迟/ASN/国家 |
-| `proxifly/free-proxy-list` | 2 | ❌ 每 5 分钟更新，量大 |
-| `TheSpeedX/PROXY-List` | 3 | ❌ |
-| `roosterkid/openproxylist` | 3 | ❌ |
+| `mahdibland/V2RayAggregator` | 1 | 大量 ss / vmess / vless / trojan 合并订阅 |
+| `peasoft/NoMoreWalls` | 1 | vmess / vless / hysteria2 等 |
+| `free18/v2ray` | 2 | 每日更新的 base64 订阅 |
+| `Pawdroid/Free-servers` | 2 | 小而精的免费节点 |
+| `ripaojiedian/freenode` | 2 | 公开节点订阅 |
 
 增删源：改 `src/core.js` 的 `DEFAULT_SOURCES`（Actions 用的是它），或 `wrangler.toml` 的 `SOURCES`（Worker 侧）。
 
-实测（2026-11）：4 源合计 **22,572** 条原始记录 → 去重 **17,106** 条；
-其中上游已标记 verified 约 **1,329** 条。
-Actions 端对质量靠前的一批做真实握手，**连通率约 22%**——说明"未验证"列表水分极大，探活这一步不能省。
+公开节点水分很大。Actions 只把 **TCP 端口探活通过** 的条目写入 KV（`verified=true`），首页默认也只展示这些。
 
 ---
 
@@ -203,11 +209,11 @@ Actions 那边可以保留（它会覆盖 KV，相当于更强的真实探活）
 .
 ├── wrangler.toml            # name / routes / assets / KV / vars（cron 已注释）
 ├── src/
-│   ├── core.js              # 源定义、解析、去重合并、评分、KV 序列化（平台无关）
-│   ├── format.js            # 7 种输出格式
-│   └── index.js             # Worker 路由 / 过滤 / 缓存
+│   ├── core.js              # 源定义、分享链接解析、去重合并、评分、KV 序列化
+│   ├── format.js            # 7 种输出格式（Clash / sing-box 等）
+│   └── index.js             # Worker 路由 / 搜索过滤 / 缓存
 ├── public/
-│   ├── index.html           # 首页：统计 + 订阅卡片 + 筛选 + 列表
+│   ├── index.html           # 首页：统计 + 订阅卡片 + 节点搜索
 │   ├── docs.html            # 接口文档
 │   ├── stats.html           # 运行状态（源健康）
 │   ├── app.js               # 双语 + 列表渲染 + 复制
@@ -226,8 +232,9 @@ Actions 那边可以保留（它会覆盖 KV，相当于更强的真实探活）
 
 ```bash
 npm run dev          # wrangler dev，本地起 Worker（KV 是空的，页面会提示）
-node scripts/test-local.mjs   # 端到端测试：25 项断言
-npm run sync:dry     # 只跑抓取+探活，结果写 ./out/，不碰 KV
+node scripts/test-parse.mjs   # 离线解析器单测
+node scripts/test-local.mjs   # 端到端测试（会真实抓订阅）
+npm run sync:dry     # 只跑抓取+TCP 探活，结果写 ./out/，不碰 KV
 ```
 
 `test-local.mjs` 用 curl 代理 `fetch`、给 KV / caches / ASSETS 打桩，裸跑真实 Worker 代码。
@@ -236,13 +243,14 @@ npm run sync:dry     # 只跑抓取+探活，结果写 ./out/，不碰 KV
 
 ## 免责
 
-本服务只**聚合互联网上公开可得的代理地址**，不提供也不中继任何流量。
-公开代理未经审计，可能被记录、篡改或注入内容——**不要通过它们登录账号、传输密码或令牌**。
+本服务只**聚合互联网上公开可得的节点分享链接**，不提供也不中继任何流量。
+公开节点未经审计，可能被记录、篡改或注入内容——**不要通过它们登录账号、传输密码或令牌**。
 仅供学习、测试与网络研究。请遵守你所在地区的法律法规。
 
-数据来源：[monosans](https://github.com/monosans/proxy-list) ·
-[proxifly](https://github.com/proxifly/free-proxy-list) ·
-[TheSpeedX](https://github.com/TheSpeedX/PROXY-List) ·
-[roosterkid](https://github.com/roosterkid/openproxylist)
+数据来源：[V2RayAggregator](https://github.com/mahdibland/V2RayAggregator) ·
+[NoMoreWalls](https://github.com/peasoft/NoMoreWalls) ·
+[free18](https://github.com/free18/v2ray) ·
+[Pawdroid](https://github.com/Pawdroid/Free-servers) ·
+[ripaojiedian](https://github.com/ripaojiedian/freenode)
 
 MIT License

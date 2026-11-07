@@ -84,6 +84,8 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
   padding: 14px; margin: 18px 0;
 }
 .field { display: flex; flex-direction: column; gap: 4px; }
+.field.grow { flex: 1 1 220px; min-width: 180px; }
+.field.grow input { width: 100%; min-width: 180px; }
 .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 .field select, .field input {
   background: #0a0e13; color: var(--text); border: 1px solid var(--line);

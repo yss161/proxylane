@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ProxyLane · API 文档</title>
-<meta name="description" content="Free public proxy-list API on Cloudflare Workers. Hourly refresh, geo/ASN metadata, Clash / Surge / sing-box / base64 subscriptions." />
+<meta name="description" content="翻墙节点搜索 API：按协议、地区、传输、安全和关键词筛选公开 ss/vmess/vless/trojan 节点，并输出 Clash、Base64、sing-box 等格式。" />
 <link rel="stylesheet" href="/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌐</text></svg>" />
 </head>
@@ -27,16 +27,17 @@
   <table class="params">
     <thead><tr><th>端点</th><th>说明</th></tr></thead>
     <tbody>
-      <tr><td>/v1/proxies</td><td>主接口，支持全部筛选参数与 7 种输出格式</td></tr>
-      <tr><td>/v1/all.txt</td><td>全部代理，纯文本 <code>ip:port</code></td></tr>
-      <tr><td>/v1/http.txt</td><td>仅 http 协议</td></tr>
-      <tr><td>/v1/https.txt</td><td>仅 https 协议</td></tr>
-      <tr><td>/v1/socks4.txt</td><td>仅 socks4 协议</td></tr>
-      <tr><td>/v1/socks5.txt</td><td>仅 socks5 协议</td></tr>
+      <tr><td>/v1/proxies</td><td>主接口，支持关键词搜索、全部筛选参数与 7 种输出格式</td></tr>
+      <tr><td>/v1/all.txt</td><td>全部节点，纯文本分享链接（一行一个）</td></tr>
+      <tr><td>/v1/ss.txt</td><td>仅 Shadowsocks</td></tr>
+      <tr><td>/v1/vmess.txt</td><td>仅 VMess</td></tr>
+      <tr><td>/v1/vless.txt</td><td>仅 VLESS</td></tr>
+      <tr><td>/v1/trojan.txt</td><td>仅 Trojan</td></tr>
+      <tr><td>/v1/hysteria2.txt</td><td>仅 Hysteria2</td></tr>
       <tr><td>/v1/random</td><td>随机返回一条；<code>?format=json</code> 返回结构化数据</td></tr>
       <tr><td>/v1/stats</td><td>总量、协议分布、来源健康状态</td></tr>
       <tr><td>/v1/sources</td><td>源清单及其最近一次抓取结果</td></tr>
-      <tr><td>/v1/config</td><td>站点配置、支持的格式与参数（供前端读取）</td></tr>
+      <tr><td>/v1/config</td><td>站点配置、支持的格式与参数</td></tr>
       <tr><td>/v1/health</td><td>存活探针</td></tr>
     </tbody>
   </table>
@@ -45,14 +46,16 @@
   <table class="params">
     <thead><tr><th>参数</th><th>取值</th><th>说明</th></tr></thead>
     <tbody>
+      <tr><td>q</td><td>任意字符串</td><td>搜索名称 / 主机 / SNI / 协议 / 分享链接</td></tr>
       <tr><td>format</td><td>json / txt / csv / clash / base64 / surge / singbox</td><td>默认 json</td></tr>
-      <tr><td>protocol</td><td>http,https,socks4,socks5 或 socks</td><td>逗号分隔多选</td></tr>
+      <tr><td>protocol</td><td>ss,ssr,vmess,vless,trojan,hysteria2,tuic,anytls,socks5</td><td>逗号分隔多选</td></tr>
       <tr><td>country</td><td>ISO 两位国家码</td><td>逗号分隔多选，如 <code>US,JP</code></td></tr>
-      <tr><td>anonymity</td><td>transparent / anonymous / elite</td><td>匿名度</td></tr>
-      <tr><td>source</td><td>monosans / proxifly / …</td><td>按来源过滤</td></tr>
+      <tr><td>network</td><td>tcp / ws / grpc / h2 / quic …</td><td>传输层</td></tr>
+      <tr><td>security</td><td>none / tls / reality</td><td>安全层</td></tr>
+      <tr><td>source</td><td>aggregator / nomorewalls / …</td><td>按来源过滤</td></tr>
       <tr><td>max_latency</td><td>毫秒</td><td>仅返回有延迟数据且低于该值的条目</td></tr>
-      <tr><td>verified</td><td>true / false</td><td>仅上游已验证</td></tr>
-      <tr><td>sort</td><td>quality / latency / country / random</td><td>默认 quality</td></tr>
+      <tr><td>verified</td><td>true / false</td><td>仅 TCP 探活通过的节点</td></tr>
+      <tr><td>sort</td><td>quality / latency / country / name / random</td><td>默认 quality</td></tr>
       <tr><td>limit</td><td>1–5000</td><td>默认值随格式变化</td></tr>
       <tr><td>offset</td><td>≥0</td><td>分页偏移</td></tr>
     </tbody>
@@ -70,34 +73,35 @@
   </table>
 
   <h2>示例</h2>
-  <pre class="code"># 只要美国 &amp; 日本、延迟低于 800ms 的前 50 条
-curl "https://proxy.hanser.cv/v1/proxies?country=US,JP&amp;max_latency=800&amp;limit=50" 
+  <pre class="code"># 搜美国 Reality 节点
+curl "https://proxy.hanser.cv/v1/proxies?q=US&amp;protocol=vless&amp;security=reality&amp;limit=20"
 
-# Clash 订阅
-curl "https://proxy.hanser.cv/v1/proxies?format=clash&amp;verified=true&amp;limit=500" -o proxylane.yaml
+# Clash 订阅（已探活）
+curl "https://proxy.hanser.cv/v1/proxies?format=clash&amp;verified=true&amp;limit=300" -o proxylane.yaml
 
-# 随机一个 socks5
-curl "https://proxy.hanser.cv/v1/random?protocol=socks5"</pre>
+# 随机一条 vless
+curl "https://proxy.hanser.cv/v1/random?protocol=vless"</pre>
 
   <h2>客户端兼容性</h2>
   <table class="params">
     <thead><tr><th>客户端</th><th>用哪个格式</th></tr></thead>
     <tbody>
       <tr><td>Clash Verge / Mihomo / Stash</td><td><code>format=clash</code></td></tr>
-      <tr><td>Shadowrocket（小火箭）</td><td><code>format=base64</code>（走 <code>http://</code> / <code>socks5://</code> URI 订阅）</td></tr>
-      <tr><td>v2rayN / NekoBox / sing-box</td><td><code>format=base64</code> 或 <code>format=singbox</code></td></tr>
+      <tr><td>v2rayN / NekoBox / Shadowrocket</td><td><code>format=base64</code></td></tr>
+      <tr><td>sing-box</td><td><code>format=singbox</code></td></tr>
       <tr><td>Surge</td><td><code>format=surge</code></td></tr>
-      <tr><td>自建脚本 / 爬虫</td><td><code>format=txt</code></td></tr>
+      <tr><td>自建脚本</td><td><code>format=txt</code> 或 <code>/v1/all.txt</code></td></tr>
     </tbody>
   </table>
 </main>
 <footer class="foot">
   <div data-i18n="foot_sources">数据来源</div>
   <div style="margin:8px 0">
-    <a href="https://github.com/monosans/proxy-list" target="_blank" rel="noopener">monosans</a> ·
-    <a href="https://github.com/proxifly/free-proxy-list" target="_blank" rel="noopener">proxifly</a> ·
-    <a href="https://github.com/TheSpeedX/PROXY-List" target="_blank" rel="noopener">TheSpeedX</a> ·
-    <a href="https://github.com/roosterkid/openproxylist" target="_blank" rel="noopener">roosterkid</a>
+    <a href="https://github.com/mahdibland/V2RayAggregator" target="_blank" rel="noopener">V2RayAggregator</a> ·
+    <a href="https://github.com/peasoft/NoMoreWalls" target="_blank" rel="noopener">NoMoreWalls</a> ·
+    <a href="https://github.com/free18/v2ray" target="_blank" rel="noopener">free18</a> ·
+    <a href="https://github.com/Pawdroid/Free-servers" target="_blank" rel="noopener">Pawdroid</a> ·
+    <a href="https://github.com/ripaojiedian/freenode" target="_blank" rel="noopener">ripaojiedian</a>
   </div>
   <div data-i18n="foot_built">由 Cloudflare Workers 驱动 · 每小时自动刷新</div>
 </footer>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ProxyLane · 公共代理聚合</title>
-<meta name="description" content="Free public proxy-list API on Cloudflare Workers. Hourly refresh, geo/ASN metadata, Clash / Surge / sing-box / base64 subscriptions." />
+<title>ProxyLane · 翻墙节点搜索</title>
+<meta name="description" content="聚合公开 ss / vmess / vless / trojan / hysteria2 节点，按协议、地区、传输方式和关键词搜索，并导出 Clash、v2rayN、sing-box 订阅。" />
 <link rel="stylesheet" href="/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌐</text></svg>" />
 </head>
@@ -20,11 +20,11 @@
   <button class="lang-btn" id="langBtn">EN</button>
 </header>
 <main class="wrap">
-  <div class="alert"><b>⚠</b> <span data-i18n="warn">公开代理未经审计，可能记录或篡改流量。请勿通过它们传输账号密码、令牌等敏感信息。</span></div>
+  <div class="alert"><b>⚠</b> <span data-i18n="warn">公开节点未经审计，可能记录或篡改流量。请勿通过它们传输账号密码、令牌等敏感信息。</span></div>
 
   <div class="grid grid-4" style="margin-bottom:14px">
-    <div class="card"><div class="stat"><span class="v" id="stTotal">—</span><span class="k" data-i18n="stats_total">代理总数</span></div></div>
-    <div class="card"><div class="stat"><span class="v" id="stVerified">—</span><span class="k" data-i18n="stats_verified">上游已验证</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="stTotal">—</span><span class="k" data-i18n="stats_total">节点总数</span></div></div>
+    <div class="card"><div class="stat"><span class="v" id="stVerified">—</span><span class="k" data-i18n="stats_verified">端口已探活</span></div></div>
     <div class="card"><div class="stat"><span class="v" id="stCountries">—</span><span class="k" data-i18n="stats_countries">国家/地区</span></div></div>
     <div class="card"><div class="stat"><span class="v" id="stUpdated" style="font-size:15px">—</span><span class="k" data-i18n="stats_updated">最近刷新</span></div></div>
   </div>
@@ -32,8 +32,8 @@
   <h2 data-i18n="sub_title">订阅地址</h2>
   <div class="grid grid-4">
     <div class="card">
-      <h3 data-i18n="card_txt">纯文本列表</h3>
-      <div class="hint" data-i18n="card_txt_hint">ip:port 一行一个</div>
+      <h3 data-i18n="card_txt">纯文本节点</h3>
+      <div class="hint" data-i18n="card_txt_hint">一行一个分享链接</div>
       <div class="urlbox"><input readonly data-url="/v1/all.txt" /><button class="btn" data-sub="/v1/all.txt" data-i18n="copy">复制</button></div>
     </div>
     <div class="card">
@@ -43,38 +43,85 @@
     </div>
     <div class="card">
       <h3 data-i18n="card_b64">Base64 订阅</h3>
-      <div class="hint" data-i18n="card_b64_hint">Shadowrocket、v2rayN、NekoBox</div>
+      <div class="hint" data-i18n="card_b64_hint">v2rayN、NekoBox、小火箭</div>
       <div class="urlbox"><input readonly data-url="/v1/proxies?format=base64&verified=true&limit=300" /><button class="btn" data-sub="/v1/proxies?format=base64&verified=true&limit=300" data-i18n="copy">复制</button></div>
     </div>
     <div class="card">
-      <h3 data-i18n="card_surge">Surge</h3>
-      <div class="hint" data-i18n="card_surge_hint">Surge 配置片段</div>
-      <div class="urlbox"><input readonly data-url="/v1/proxies?format=surge&limit=200" /><button class="btn" data-sub="/v1/proxies?format=surge&limit=200" data-i18n="copy">复制</button></div>
+      <h3 data-i18n="card_singbox">sing-box</h3>
+      <div class="hint" data-i18n="card_singbox_hint">outbounds JSON</div>
+      <div class="urlbox"><input readonly data-url="/v1/proxies?format=singbox&verified=true&limit=300" /><button class="btn" data-sub="/v1/proxies?format=singbox&verified=true&limit=300" data-i18n="copy">复制</button></div>
     </div>
   </div>
 
-  <h2 data-i18n="filter_title">筛选</h2>
+  <h2 data-i18n="filter_title">搜寻翻墙节点</h2>
   <div class="filters">
+    <div class="field grow"><label data-i18n="f_search">关键词</label><input id="fSearch" placeholder="US / vless / reality / sni" size="22" /></div>
     <div class="field"><label data-i18n="f_protocol">协议</label>
-      <select id="fProto"><option value="all" data-i18n="all">全部</option><option value="http">http</option><option value="https">https</option><option value="socks4">socks4</option><option value="socks5">socks5</option></select></div>
-    <div class="field"><label data-i18n="f_country">国家码</label><input id="fCountry" placeholder="US,JP" size="8" /></div>
-    <div class="field"><label data-i18n="f_latency">延迟上限 (ms)</label><input id="fLatency" placeholder="800" size="8" /></div>
+      <select id="fProto">
+        <option value="all" data-i18n="all">全部</option>
+        <option value="ss">ss</option>
+        <option value="ssr">ssr</option>
+        <option value="vmess">vmess</option>
+        <option value="vless">vless</option>
+        <option value="trojan">trojan</option>
+        <option value="hysteria2">hysteria2</option>
+        <option value="tuic">tuic</option>
+        <option value="anytls">anytls</option>
+        <option value="socks5">socks5</option>
+      </select></div>
+    <div class="field"><label data-i18n="f_country">国家码</label><input id="fCountry" placeholder="US,JP,SG" size="10" /></div>
+    <div class="field"><label data-i18n="f_network">传输</label>
+      <select id="fNet">
+        <option value="all" data-i18n="all">全部</option>
+        <option value="tcp">tcp</option>
+        <option value="ws">ws</option>
+        <option value="grpc">grpc</option>
+        <option value="h2">h2</option>
+        <option value="quic">quic</option>
+      </select></div>
+    <div class="field"><label data-i18n="f_security">安全</label>
+      <select id="fTls">
+        <option value="all" data-i18n="all">全部</option>
+        <option value="none">none</option>
+        <option value="tls">tls</option>
+        <option value="reality">reality</option>
+      </select></div>
     <div class="field"><label data-i18n="f_source">来源</label>
-      <select id="fSource"><option value="all" data-i18n="all">全部</option><option value="monosans">monosans</option><option value="proxifly">proxifly</option><option value="thespeedx-http">thespeedx-http</option><option value="thespeedx-socks5">thespeedx-socks5</option><option value="roosterkid">roosterkid</option></select></div>
+      <select id="fSource">
+        <option value="all" data-i18n="all">全部</option>
+        <option value="aggregator">aggregator</option>
+        <option value="nomorewalls">nomorewalls</option>
+        <option value="free18">free18</option>
+        <option value="pawdroid">pawdroid</option>
+        <option value="ripao">ripao</option>
+      </select></div>
     <div class="field"><label data-i18n="f_sort">排序</label>
-      <select id="fSort"><option value="quality" data-i18n="sort_quality">质量优先</option><option value="latency" data-i18n="sort_latency">延迟最低</option><option value="country" data-i18n="sort_country">按国家</option><option value="random" data-i18n="sort_random">随机</option></select></div>
-    <div class="field"><label data-i18n="f_verified">仅已验证</label><label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--text)"><input type="checkbox" id="fVerified" checked /> <span class="pill">verified</span></label></div>
-    <button class="btn" id="applyBtn" data-i18n="f_apply">应用</button>
+      <select id="fSort">
+        <option value="quality" data-i18n="sort_quality">质量优先</option>
+        <option value="latency" data-i18n="sort_latency">延迟最低</option>
+        <option value="country" data-i18n="sort_country">按国家</option>
+        <option value="name" data-i18n="sort_name">按名称</option>
+        <option value="random" data-i18n="sort_random">随机</option>
+      </select></div>
+    <div class="field"><label data-i18n="f_verified">仅已探活</label><label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--text)"><input type="checkbox" id="fVerified" /> <span class="pill">verified</span></label></div>
+    <button class="btn" id="applyBtn" data-i18n="f_apply">搜索</button>
     <button class="btn ghost" id="resetBtn" data-i18n="f_reset">重置</button>
   </div>
 
   <div class="card" style="padding:0;overflow:hidden">
     <table>
       <thead><tr>
-        <th data-i18n="th_proxy">地址</th><th data-i18n="th_proto">协议</th><th data-i18n="th_country">国家</th>
-        <th data-i18n="th_latency">延迟</th><th data-i18n="th_source">来源</th><th data-i18n="th_verified">状态</th>
+        <th data-i18n="th_name">名称</th>
+        <th data-i18n="th_proto">协议</th>
+        <th data-i18n="th_server">服务器</th>
+        <th data-i18n="th_country">国家</th>
+        <th data-i18n="th_net">传输</th>
+        <th data-i18n="th_tls">安全</th>
+        <th data-i18n="th_latency">延迟</th>
+        <th data-i18n="th_source">来源</th>
+        <th data-i18n="th_copy">分享链接</th>
       </tr></thead>
-      <tbody id="rows"><tr><td colspan="6" class="muted">…</td></tr></tbody>
+      <tbody id="rows"><tr><td colspan="9" class="muted">…</td></tr></tbody>
     </table>
   </div>
 
@@ -87,10 +134,11 @@
 <footer class="foot">
   <div data-i18n="foot_sources">数据来源</div>
   <div style="margin:8px 0">
-    <a href="https://github.com/monosans/proxy-list" target="_blank" rel="noopener">monosans</a> ·
-    <a href="https://github.com/proxifly/free-proxy-list" target="_blank" rel="noopener">proxifly</a> ·
-    <a href="https://github.com/TheSpeedX/PROXY-List" target="_blank" rel="noopener">TheSpeedX</a> ·
-    <a href="https://github.com/roosterkid/openproxylist" target="_blank" rel="noopener">roosterkid</a>
+    <a href="https://github.com/mahdibland/V2RayAggregator" target="_blank" rel="noopener">V2RayAggregator</a> ·
+    <a href="https://github.com/peasoft/NoMoreWalls" target="_blank" rel="noopener">NoMoreWalls</a> ·
+    <a href="https://github.com/free18/v2ray" target="_blank" rel="noopener">free18</a> ·
+    <a href="https://github.com/Pawdroid/Free-servers" target="_blank" rel="noopener">Pawdroid</a> ·
+    <a href="https://github.com/ripaojiedian/freenode" target="_blank" rel="noopener">ripaojiedian</a>
   </div>
   <div data-i18n="foot_built">由 Cloudflare Workers 驱动 · 每小时自动刷新</div>
 </footer>

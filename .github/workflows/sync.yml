@@ -51,9 +51,7 @@ jobs:
           VERIFY_LIMIT: '4000'
           # 单条探活超时
           VERIFY_TIMEOUT_MS: '4000'
-          # 探活目标（选一个大多数代理都放行、且不挡数据中心 IP 的地址）
-          TARGET_HOST: '1.1.1.1'
-          TARGET_PORT: '443'
+          # TCP 探活：只测节点端口是否开放
         run: node scripts/sync.mjs
 
       # 心跳：每月 1 号提交一行，避免 60 天无提交导致定时任务被 GitHub 禁用

@@ -10,7 +10,7 @@
 |---|---|---|
 | GitHub 仓库 | ✅ 已上线 | https://github.com/yss161/proxylane |
 | Actions 工作流 | ⚠️ 在跑但全部失败 | 已自动跑了 3 次，每次都卡在写 KV |
-| 抓取 + 探活 | ✅ 完全正常 | 最近一次：抓 22,833 条 → 探活 4,000 条 → 1,177 条可用 |
+| 抓取 + 探活 | ✅ 脚本可用 | 现已改为抓公开订阅（ss/vmess/vless/trojan）并做 TCP 探活 |
 | KV namespace | ❌ 未创建 | wrangler.toml 里还是占位符 |
 | GitHub Secrets | ❌ 一个都没有 | 这是失败的直接原因 |
 | Worker | ❌ 未部署 | — |
@@ -146,8 +146,8 @@ gh run watch -R yss161/proxylane
 [2/3] 真实探活（上限 4000 条，目标 1.1.1.1:443）…
 [verify] 1177/4000 alive in 86954ms
 [3/3] 最终可用 1177 条
-[kv] wrote pool:v1 (xxxxx bytes)
-[kv] wrote meta:v1 (xxx bytes)
+[kv] wrote pool:v2 (xxxxx bytes)
+[kv] wrote meta:v2 (xxx bytes)
 done.
 `%
 
@@ -252,13 +252,14 @@ Success: Build completed
 curl https://proxy.hanser.cv/v1/health
 curl https://proxy.hanser.cv/v1/stats
 curl "https://proxy.hanser.cv/v1/all.txt?limit=10"
-curl "https://proxy.hanser.cv/v1/proxies?format=clash&limit=5"
+curl "https://proxy.hanser.cv/v1/proxies?q=vless&format=json&limit=5"
+curl "https://proxy.hanser.cv/v1/proxies?format=clash&verified=true&limit=5"
 `%
 
 浏览器打开 https://proxy.hanser.cv ，应该看到：
 - 顶部 4 个统计卡片有数字（不是 —）
 - 4 张订阅卡片，点「复制」能拿到完整 URL
-- 下方列表有数据，点地址能复制
+- 下方节点搜索列表有数据，点名称或「复制」能拿到分享链接
 - 右上角 EN 按钮能切中英文
 
 ---
@@ -270,7 +271,7 @@ curl "https://proxy.hanser.cv/v1/proxies?format=clash&limit=5"
 配置 → 新建 → 类型 **Remote** → URL：
 
 `%
-https://proxy.hanser.cv/v1/proxies?format=clash&limit=500
+https://proxy.hanser.cv/v1/proxies?format=clash&verified=true&limit=500
 `%
 
 ### Shadowrocket（小火箭）
@@ -278,17 +279,16 @@ https://proxy.hanser.cv/v1/proxies?format=clash&limit=500
 首页右上 **+** → 类型 **Subscribe** → URL：
 
 `%
-https://proxy.hanser.cv/v1/proxies?format=base64&protocol=http,socks5&limit=300
+https://proxy.hanser.cv/v1/proxies?format=base64&verified=true&limit=300
 `%
 
-> 必须带 protocol=http,socks5：小火箭对 socks4:// 支持不稳定，会让解析变慢甚至丢节点。
 
 ### v2rayN / NekoBox
 
 订阅 → 添加 → 地址：
 
 `%
-https://proxy.hanser.cv/v1/proxies?format=base64&limit=300
+https://proxy.hanser.cv/v1/proxies?format=base64&verified=true&limit=300
 `%
 
 ### sing-box
@@ -306,7 +306,7 @@ https://proxy.hanser.cv/v1/proxies?format=base64&limit=300
 ⚠️ **实测提醒**：GitHub 会限流低活跃度仓库的定时任务。你配的是 30 分钟，
 但实际观测间隔是 **4~6 小时**（20:03 → 00:04 → 05:47）。两条路：
 
-1. **接受现状**：公开代理寿命本身也就几小时，4 小时一次够用；
+1. **接受现状**：公开节点寿命本身也就几小时，4 小时一次够用；
 2. **外部定时器**：用 https://cron-job.org 每 30 分钟打一次 GitHub API：
 
 `%
@@ -335,13 +335,13 @@ npx wrangler tail          # Worker 实时日志
 | 现象 | 原因 | 解决 |
 |---|---|---|
 | Actions 报 缺少 CF_ACCOUNT_ID / CF_API_TOKEN / KV_NAMESPACE_ID | Secrets 没配 | 步骤 5 |
-| Actions 报 KV PUT pool:v1 -> 403 | Token 权限不对 / 账号没选对 | 重建 Token：Account · Workers KV Storage · Edit |
-| Actions 报 KV PUT pool:v1 -> 404 | KV_NAMESPACE_ID 填错 | npx wrangler kv namespace list 核对 |
+| Actions 报 KV PUT pool:v2 -> 403 | Token 权限不对 / 账号没选对 | 重建 Token：Account · Workers KV Storage · Edit |
+| Actions 报 KV PUT pool:v2 -> 404 | KV_NAMESPACE_ID 填错 | npx wrangler kv namespace list 核对 |
 | deploy 报 KV namespace not found | wrangler.toml 里 id 还是占位符 | 步骤 3 |
 | 站点 503 pool_empty | KV 没数据 | 跑一次步骤 6 |
 | 自定义域名 522 / SSL 错 | 证书未签发完，或 NS 不在该账号 | 等 5 分钟；看 zone 是否 Active |
 | Worker exceeded CPU time limit | NO_SELF_REFRESH 被改成 0 | 改回 "1" |
-| 探活成功数 < 300 | 代理质量波动，或机房 IP 被拒 | 调大 VERIFY_LIMIT；换 TARGET_HOST |
+| 探活成功数 < 300 | 节点质量波动，或机房 IP 被拒 | 调大 VERIFY_LIMIT |
 | 定时任务不跑 | 仓库 60 天无提交被禁用 | 已内置每月 1 号心跳提交 |
 
 ---

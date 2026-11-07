@@ -3,9 +3,9 @@
 import { DEFAULT_SOURCES, parseSourcesVar, collectPool, packRecords, unpackRecords, sortRecords, countBy, PROTO_NAMES } from './core.js';
 import { render, FORMATS, FORMAT_PROTOCOLS } from './format.js';
 
-const KEY_POOL = 'pool:v1';
-const KEY_META = 'meta:v1';
-const BUILD = '1.0.0';
+const KEY_POOL = 'pool:v2';
+const KEY_META = 'meta:v2';
+const BUILD = '1.1.0';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -16,6 +16,7 @@ const CORS = {
 
 const DEF_LIMIT = { json: 200, txt: 5000, csv: 5000, base64: 1000, clash: 1000, surge: 1000, singbox: 1000 };
 const MAX_LIMIT = 5000;
+const TXT_PROTOS = ['all'].concat(PROTO_NAMES);
 
 function jsonResponse(data, status, extra) {
   const headers = Object.assign({}, CORS, { 'content-type': 'application/json; charset=utf-8' }, extra || {});
@@ -27,15 +28,12 @@ function textResponse(body, status, extra) {
   return new Response(body, { status: status || 200, headers: headers });
 }
 
-// ---------------------------------------------------------------
-// 刷新：抓取 -> 解析 -> 合并 -> 写 KV
-// ---------------------------------------------------------------
 async function runRefresh(env) {
   const sources = parseSourcesVar(env.SOURCES);
   const started = Date.now();
   const result = await collectPool(sources, {
     maxRecords: Number(env.MAX_RECORDS || 12000),
-    timeoutMs: Number(env.FETCH_TIMEOUT_MS || 15000),
+    timeoutMs: Number(env.FETCH_TIMEOUT_MS || 20000),
     concurrency: 5,
   });
   const records = result.records;
@@ -45,7 +43,8 @@ async function runRefresh(env) {
     total: records.length,
     rawCount: result.rawCount,
     protocols: countBy(records, 'proto'),
-    anonymity: countBy(records, 'anon'),
+    networks: countBy(records, 'net'),
+    security: countBy(records, 'tls'),
     verified: records.filter(function (r) { return r.verified; }).length,
     countries: Object.keys(countBy(records, 'cc')).length,
     sources: result.metas,
@@ -76,9 +75,6 @@ async function loadMeta(env) {
   }
 }
 
-// ---------------------------------------------------------------
-// 查询参数
-// ---------------------------------------------------------------
 function splitList(v) {
   if (!v) return null;
   const arr = String(v).split(',').map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
@@ -94,9 +90,11 @@ function parseQuery(url) {
   const q = url.searchParams;
   const verifiedRaw = q.get('verified');
   return {
+    q: String(q.get('q') || q.get('search') || q.get('keyword') || '').trim().toLowerCase(),
     protocols: splitList(q.get('protocol')),
     countries: splitList(q.get('country')),
-    anonymity: splitList(q.get('anonymity')),
+    networks: splitList(q.get('network') || q.get('net')),
+    security: splitList(q.get('security') || q.get('tls')),
     sources: splitList(q.get('source')),
     maxLatency: q.get('max_latency') ? numOr(q.get('max_latency'), 0) : 0,
     verified: verifiedRaw === null ? null : !(verifiedRaw === 'false' || verifiedRaw === '0'),
@@ -111,12 +109,21 @@ function expandProtocols(list) {
   if (!list) return null;
   const out = [];
   for (let i = 0; i < list.length; i++) {
-    const p = list[i];
+    let p = list[i];
     if (p === 'all' || p === '*') return null;
-    if (p === 'socks') { out.push('socks4', 'socks5'); continue; }
+    if (p === 'hy2' || p === 'hysteria') p = 'hysteria2';
+    if (p === 'socks') p = 'socks5';
+    if (p === 'shadowsocks') p = 'ss';
     if (PROTO_NAMES.indexOf(p) >= 0) out.push(p);
   }
   return out.length ? out : null;
+}
+
+function haystack(r) {
+  return [
+    r.name, r.host, r.proto, r.cc, r.net, r.tls, r.src, r.uri,
+    r.extra && r.extra.sni, r.extra && r.extra.method, r.extra && r.extra.uuid,
+  ].join(' ').toLowerCase();
 }
 
 function applyFilters(records, q) {
@@ -126,17 +133,18 @@ function applyFilters(records, q) {
     const r = records[i];
     if (protos && protos.indexOf(r.proto) < 0) continue;
     if (q.countries && q.countries.indexOf(String(r.cc).toLowerCase()) < 0) continue;
-    if (q.anonymity && q.anonymity.indexOf(r.anon) < 0) continue;
+    if (q.networks && q.networks.indexOf(String(r.net).toLowerCase()) < 0) continue;
+    if (q.security && q.security.indexOf(String(r.tls).toLowerCase()) < 0) continue;
     if (q.sources && q.sources.indexOf(r.src) < 0) continue;
     if (q.maxLatency > 0 && r.latency > 0 && r.latency > q.maxLatency) continue;
     if (q.maxLatency > 0 && r.latency === 0) continue;
     if (q.verified !== null && r.verified !== q.verified) continue;
+    if (q.q && haystack(r).indexOf(q.q) < 0) continue;
     out.push(r);
   }
   return out;
 }
 
-// 剔掉目标格式不支持的协议
 function fitFormat(records, format) {
   const allow = FORMAT_PROTOCOLS[format];
   if (!allow) return { list: records, dropped: 0 };
@@ -147,15 +155,11 @@ function fitFormat(records, format) {
   return { list: out, dropped: records.length - out.length };
 }
 
-// ---------------------------------------------------------------
-// 路由
-// ---------------------------------------------------------------
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 静态资源（首页 / 文档 / 状态页）
     if (path.indexOf('/v1/') !== 0) {
       if (env.ASSETS) return env.ASSETS.fetch(request);
       return textResponse('Not Found', 404);
@@ -168,7 +172,6 @@ export default {
       return jsonResponse({ ok: false, error: 'method_not_allowed' }, 405);
     }
 
-    // ---- /v1/health ----
     if (path === '/v1/health') {
       return jsonResponse({
         ok: true,
@@ -178,7 +181,6 @@ export default {
       });
     }
 
-    // ---- /v1/config ----
     if (path === '/v1/config') {
       return jsonResponse({
         ok: true,
@@ -187,13 +189,18 @@ export default {
         build: BUILD,
         formats: FORMATS,
         protocols: PROTO_NAMES,
-        params: ['protocol', 'country', 'anonymity', 'source', 'max_latency', 'verified', 'sort', 'limit', 'offset', 'format'],
+        params: ['q', 'protocol', 'country', 'network', 'security', 'source', 'max_latency', 'verified', 'sort', 'limit', 'offset', 'format'],
         endpoints: [
           '/v1/proxies',
           '/v1/all.txt',
-          '/v1/http.txt',
-          '/v1/https.txt',
-          '/v1/socks4.txt',
+          '/v1/ss.txt',
+          '/v1/ssr.txt',
+          '/v1/vmess.txt',
+          '/v1/vless.txt',
+          '/v1/trojan.txt',
+          '/v1/hysteria2.txt',
+          '/v1/tuic.txt',
+          '/v1/anytls.txt',
           '/v1/socks5.txt',
           '/v1/random',
           '/v1/stats',
@@ -203,7 +210,6 @@ export default {
       }, 200, { 'cache-control': 'public, max-age=3600' });
     }
 
-    // ---- /v1/refresh（需要 ADMIN_TOKEN）----
     if (path === '/v1/refresh') {
       const token = url.searchParams.get('token') || request.headers.get('x-admin-token');
       if (!env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) {
@@ -213,7 +219,6 @@ export default {
       return jsonResponse({ ok: true, meta: meta });
     }
 
-    // ---- /v1/sources ----
     if (path === '/v1/sources') {
       const meta = await loadMeta(env);
       const last = (meta && meta.sources) || [];
@@ -233,7 +238,6 @@ export default {
       return jsonResponse({ ok: true, updated_at: meta ? meta.updatedAt : null, sources: out }, 200, { 'cache-control': 'public, max-age=300' });
     }
 
-    // ---- 带缓存的读路径 ----
     const cacheable = path !== '/v1/stats';
     const cache = caches.default;
     const cacheKey = new Request(url.toString(), { method: 'GET' });
@@ -244,7 +248,6 @@ export default {
 
     const records = await loadPool(env);
     if (!records) {
-      // 方案 B：Worker 不自己抓，只提示去跑 GitHub Actions
       if (env.NO_SELF_REFRESH === '1') {
         return jsonResponse({
           ok: false,
@@ -252,7 +255,6 @@ export default {
           hint: 'KV 为空。请在 GitHub 仓库 Actions 页手动运行 sync-kv 工作流（约 2 分钟），或等待下一次定时同步。',
         }, 503, Object.assign({}, CORS, { 'retry-after': '120' }));
       }
-      // 方案 A（Paid）：后台预热，同时返回 503，客户端稍后重试
       ctx.waitUntil(runRefresh(env));
       return jsonResponse({
         ok: false,
@@ -261,7 +263,6 @@ export default {
       }, 503, Object.assign({}, CORS, { 'retry-after': '60' }));
     }
 
-    // ---- /v1/stats ----
     if (path === '/v1/stats') {
       const meta = (await loadMeta(env)) || {};
       return jsonResponse({
@@ -271,20 +272,22 @@ export default {
         total: records.length,
         verified: records.filter(function (r) { return r.verified; }).length,
         protocols: countBy(records, 'proto'),
-        anonymity: countBy(records, 'anon'),
-        top_countries: Object.keys(countBy(records, 'cc')).length,
+        networks: countBy(records, 'net'),
+        security: countBy(records, 'tls'),
+        top_countries: Object.keys(countBy(records, 'cc')).filter(function (k) { return k && k !== 'unknown'; }).length,
         sources: meta.sources || [],
         build: BUILD,
       }, 200, { 'cache-control': 'public, max-age=60' });
     }
 
-    // ---- /v1/{proto}.txt ----
     let forcedProtocol = null;
     let forcedFormat = null;
-    const m = /^\/v1\/(all|http|https|socks4|socks5)\.txt$/.exec(path);
+    const m = /^\/v1\/(all|ss|ssr|vmess|vless|trojan|hysteria2|hy2|tuic|anytls|socks5)\.txt$/.exec(path);
     if (m) {
       forcedFormat = 'txt';
-      forcedProtocol = m[1] === 'all' ? null : m[1];
+      if (m[1] === 'all') forcedProtocol = null;
+      else if (m[1] === 'hy2') forcedProtocol = 'hysteria2';
+      else forcedProtocol = m[1];
     }
 
     if (path !== '/v1/proxies' && path !== '/v1/random' && !m) {
@@ -292,23 +295,28 @@ export default {
     }
 
     const q = parseQuery(url);
-    // 显式 ?format= 优先；否则 /v1/{proto}.txt 强制 txt，/v1/proxies 默认 json
     const qFormat = url.searchParams.get('format');
     let format;
     if (qFormat && FORMATS.indexOf(q.format) >= 0) format = q.format;
     else format = forcedFormat || 'json';
 
-    // ---- /v1/random ----
     if (path === '/v1/random') {
       if (forcedProtocol) q.protocols = [forcedProtocol];
       const list = applyFilters(records, q);
       if (!list.length) return jsonResponse({ ok: false, error: 'no_match' }, 404);
       const pick = list[Math.floor(Math.random() * list.length)];
-      // random 默认返回纯文本，?format=json 才给结构化
       const wantJson = url.searchParams.get('format') === 'json';
       const body = wantJson
-        ? JSON.stringify({ ok: true, proxy: pick.host + ':' + pick.port, protocol: pick.proto, country: pick.cc || null }, null, 2) + '\n'
-        : pick.host + ':' + pick.port + '\n';
+        ? JSON.stringify({
+          ok: true,
+          name: pick.name,
+          protocol: pick.proto,
+          server: pick.host,
+          port: pick.port,
+          country: pick.cc || null,
+          uri: pick.uri,
+        }, null, 2) + '\n'
+        : (pick.uri || (pick.host + ':' + pick.port)) + '\n';
       return new Response(body, {
         status: 200,
         headers: Object.assign({}, CORS, {
@@ -318,7 +326,6 @@ export default {
       });
     }
 
-    // ---- /v1/proxies 与 /v1/*.txt ----
     if (forcedProtocol) q.protocols = [forcedProtocol];
     let filtered = applyFilters(records, q);
     const fitted = fitFormat(filtered, format);
@@ -352,7 +359,9 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    if (env.NO_SELF_REFRESH === '1') return; // 方案 B：交给 GitHub Actions
+    if (env.NO_SELF_REFRESH === '1') return;
     ctx.waitUntil(runRefresh(env));
   },
 };
+
+export { TXT_PROTOS };

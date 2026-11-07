@@ -68,6 +68,5 @@ NO_SELF_REFRESH = "1"
 # ADMIN_TOKEN = "change-me"
 
 # 源清单（JSON 数组，留空则使用 src/core.js 里的 DEFAULT_SOURCES）
-# 想增删源直接改这里，不用动代码。示例：
-# SOURCES = """[{"id":"monosans","name":"monosans/proxy-list","tier":1,"verified":true,"parser":"monosans","url":"https://raw.githubusercontent.com/monosans/proxy-list/main/proxies.json","home":"https://github.com/monosans/proxy-list"}]"""
+# 想增删源直接改这里，不用动代码。
 SOURCES = ""

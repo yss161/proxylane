@@ -2,7 +2,7 @@
   "name": "proxylane",
   "version": "1.0.0",
   "private": true,
-  "description": "Public proxy-list aggregator on Cloudflare Workers — hourly refresh, geo/ASN metadata, Clash/Surge/sing-box/base64 subscriptions.",
+  "description": "Public ss/vmess/vless/trojan node search on Cloudflare Workers — subscription ingest, TCP probe, Clash/sing-box/base64 output.",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

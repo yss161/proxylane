@@ -4,50 +4,61 @@ var I18N = {
     nav_home: '首页',
     nav_docs: '接口文档',
     nav_stats: '运行状态',
-    warn: '公开代理未经审计，可能记录或篡改流量。请勿通过它们传输账号密码、令牌等敏感信息。',
+    warn: '节点来自公开订阅，仅做解析、去重和端口探活，不保证能访问特定网站。公开节点可能记录或篡改流量，请勿传输账号密码、令牌等敏感信息。',
     sub_title: '订阅地址',
     sub_desc: '复制链接导入客户端',
-    card_txt: '纯文本列表',
-    card_txt_hint: 'ip:port 一行一个，适合脚本 / 自建工具',
+    card_txt: '纯文本节点',
+    card_txt_hint: '一行一个分享链接，适合脚本 / 自建工具',
     card_clash: 'Clash / Mihomo',
     card_clash_hint: 'Clash Verge、Mihomo、Stash 直接导入',
     card_b64: 'Base64 订阅',
-    card_b64_hint: 'Shadowrocket、v2rayN、NekoBox、小火箭',
+    card_b64_hint: 'v2rayN、NekoBox、小火箭',
+    card_singbox: 'sing-box',
+    card_singbox_hint: 'outbounds JSON，可粘贴进配置',
     card_surge: 'Surge',
     card_surge_hint: 'Surge 配置片段（[Proxy] 段）',
-    stats_total: '代理总数',
-    stats_verified: '上游已验证',
+    stats_total: '节点总数',
+    stats_verified: '端口已探活',
     stats_countries: '国家/地区',
     stats_updated: '最近刷新',
-    filter_title: '筛选',
+    filter_title: '搜寻翻墙节点',
+    f_search: '关键词',
     f_protocol: '协议',
     f_country: '国家码',
-    f_latency: '延迟上限 (ms)',
+    f_network: '传输',
+    f_security: '安全',
     f_source: '来源',
     f_sort: '排序',
     f_limit: '每页',
-    f_verified: '仅已验证',
-    f_apply: '应用',
+    f_verified: '仅已探活',
+    f_apply: '搜索',
     f_reset: '重置',
     all: '全部',
     sort_quality: '质量优先',
     sort_latency: '延迟最低',
     sort_country: '按国家',
+    sort_name: '按名称',
     sort_random: '随机',
-    th_proxy: '地址',
+    th_name: '名称',
     th_proto: '协议',
+    th_server: '服务器',
     th_country: '国家',
+    th_net: '传输',
+    th_tls: '安全',
     th_latency: '延迟',
     th_source: '来源',
+    th_copy: '分享链接',
+    th_proxy: '地址',
     th_verified: '状态',
-    yes: '已验证',
-    no: '未验证',
+    yes: '已探活',
+    no: '未探活',
+    copy_uri: '复制',
     prev: '上一页',
     next: '下一页',
     copy: '复制',
     copied: '已复制',
     loading: '加载中…',
-    empty: '没有符合条件的代理',
+    empty: '没有符合条件的节点',
     page: '第',
     page_of: '页 / 共',
     rows: '条结果',
@@ -60,50 +71,61 @@ var I18N = {
     nav_home: 'Home',
     nav_docs: 'API Docs',
     nav_stats: 'Status',
-    warn: 'Public proxies are unaudited and may log or tamper with traffic. Never send credentials or tokens through them.',
+    warn: 'Nodes come from public subscriptions. We only parse, dedupe and TCP-probe them; access to any specific website is not guaranteed. Public nodes may log or tamper with traffic. Never send credentials or tokens through them.',
     sub_title: 'Subscription URLs',
     sub_desc: 'Copy a link into your client',
-    card_txt: 'Plain text list',
-    card_txt_hint: 'One ip:port per line — scripts & custom tools',
+    card_txt: 'Plain-text nodes',
+    card_txt_hint: 'One share URI per line — scripts & custom tools',
     card_clash: 'Clash / Mihomo',
     card_clash_hint: 'Import directly in Clash Verge, Mihomo, Stash',
     card_b64: 'Base64 subscription',
-    card_b64_hint: 'Shadowrocket, v2rayN, NekoBox',
+    card_b64_hint: 'v2rayN, NekoBox, Shadowrocket',
+    card_singbox: 'sing-box',
+    card_singbox_hint: 'outbounds JSON you can paste into config',
     card_surge: 'Surge',
     card_surge_hint: 'Surge config snippet ([Proxy] section)',
-    stats_total: 'Total proxies',
-    stats_verified: 'Upstream verified',
+    stats_total: 'Total nodes',
+    stats_verified: 'TCP probed',
     stats_countries: 'Countries',
     stats_updated: 'Last refresh',
-    filter_title: 'Filters',
+    filter_title: 'Search nodes',
+    f_search: 'Keyword',
     f_protocol: 'Protocol',
     f_country: 'Country',
-    f_latency: 'Max latency (ms)',
+    f_network: 'Network',
+    f_security: 'Security',
     f_source: 'Source',
     f_sort: 'Sort',
     f_limit: 'Per page',
-    f_verified: 'Verified only',
-    f_apply: 'Apply',
+    f_verified: 'Probed only',
+    f_apply: 'Search',
     f_reset: 'Reset',
     all: 'All',
     sort_quality: 'Quality',
     sort_latency: 'Lowest latency',
     sort_country: 'By country',
+    sort_name: 'By name',
     sort_random: 'Random',
-    th_proxy: 'Address',
+    th_name: 'Name',
     th_proto: 'Proto',
+    th_server: 'Server',
     th_country: 'Country',
+    th_net: 'Net',
+    th_tls: 'TLS',
     th_latency: 'Latency',
     th_source: 'Source',
+    th_copy: 'Share URI',
+    th_proxy: 'Address',
     th_verified: 'State',
-    yes: 'verified',
-    no: 'unverified',
+    yes: 'probed',
+    no: 'raw',
+    copy_uri: 'Copy',
     prev: 'Prev',
     next: 'Next',
     copy: 'Copy',
     copied: 'Copied',
     loading: 'Loading…',
-    empty: 'No proxies matched',
+    empty: 'No nodes matched',
     page: 'Page',
     page_of: 'of',
     rows: 'results',
@@ -210,14 +232,18 @@ function setText(id, v) {
 
 function buildQuery() {
   var q = [];
+  var search = val('fSearch');
   var proto = val('fProto');
   var country = val('fCountry');
-  var latency = val('fLatency');
+  var net = val('fNet');
+  var tls = val('fTls');
   var source = val('fSource');
   var sort = val('fSort');
+  if (search) q.push('q=' + encodeURIComponent(search));
   if (proto && proto !== 'all') q.push('protocol=' + encodeURIComponent(proto));
   if (country) q.push('country=' + encodeURIComponent(country));
-  if (latency) q.push('max_latency=' + encodeURIComponent(latency));
+  if (net && net !== 'all') q.push('network=' + encodeURIComponent(net));
+  if (tls && tls !== 'all') q.push('security=' + encodeURIComponent(tls));
   if (source && source !== 'all') q.push('source=' + encodeURIComponent(source));
   if (sort) q.push('sort=' + encodeURIComponent(sort));
   var ver = document.getElementById('fVerified');
@@ -233,14 +259,29 @@ function val(id) {
   return el ? String(el.value || '').trim() : '';
 }
 
+function protoClass(p) {
+  if (p === 'vless' || p === 'trojan') return 'tag s5';
+  if (p === 'ss' || p === 'ssr') return 'tag s4';
+  if (p === 'hysteria2' || p === 'tuic') return 'tag ok';
+  return 'tag';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function loadList() {
   if (state.loading) return;
   state.loading = true;
   var tbody = document.getElementById('rows');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="muted">' + t('loading') + '</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('loading') + '</td></tr>';
   fetch('/v1/proxies?' + buildQuery()).then(function (r) {
     if (r.status === 503) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="muted">' + t('booting') + '</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('booting') + '</td></tr>';
       state.loading = false;
       return null;
     }
@@ -253,7 +294,7 @@ function loadList() {
     renderRows((d && d.data) || []);
   }).catch(function () {
     state.loading = false;
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="muted">error</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">error</td></tr>';
   });
 }
 
@@ -261,19 +302,23 @@ function renderRows(items) {
   var tbody = document.getElementById('rows');
   if (!tbody) return;
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="muted">' + t('empty') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('empty') + '</td></tr>';
   } else {
     var html = '';
     for (var i = 0; i < items.length; i++) {
       var r = items[i];
-      var cls = r.protocol === 'socks5' ? 'tag s5' : r.protocol === 'socks4' ? 'tag s4' : 'tag';
+      var uri = r.uri || '';
+      var server = (r.server || '') + ':' + (r.port || '');
       html += '<tr>';
-      html += '<td class="copy-cell mono" data-copy="' + r.proxy + '">' + r.proxy + '</td>';
-      html += '<td><span class="' + cls + '">' + r.protocol + '</span></td>';
-      html += '<td class="mono">' + (r.country || '—') + '</td>';
+      html += '<td class="copy-cell" data-copy="' + esc(uri) + '">' + esc(r.name || '—') + '</td>';
+      html += '<td><span class="' + protoClass(r.protocol) + '">' + esc(r.protocol) + '</span></td>';
+      html += '<td class="mono">' + esc(server) + '</td>';
+      html += '<td class="mono">' + esc(r.country || '—') + '</td>';
+      html += '<td class="mono">' + esc(r.network || '—') + '</td>';
+      html += '<td class="mono">' + esc(r.security || '—') + '</td>';
       html += '<td class="mono">' + fmtLatency(r.latency_ms) + '</td>';
-      html += '<td class="muted">' + (r.source || '—') + '</td>';
-      html += '<td>' + (r.verified ? '<span class="tag ok">' + t('yes') + '</span>' : '<span class="tag">' + t('no') + '</span>') + '</td>';
+      html += '<td class="muted">' + esc(r.source || '—') + '</td>';
+      html += '<td><button class="btn ghost" data-copy="' + esc(uri) + '">' + t('copy_uri') + '</button></td>';
       html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -294,9 +339,13 @@ function renderRows(items) {
 function bindHome() {
   var apply = document.getElementById('applyBtn');
   if (apply) apply.addEventListener('click', function () { state.page = 0; loadList(); });
+  var search = document.getElementById('fSearch');
+  if (search) search.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { state.page = 0; loadList(); }
+  });
   var reset = document.getElementById('resetBtn');
   if (reset) reset.addEventListener('click', function () {
-    ['fProto', 'fCountry', 'fLatency', 'fSource', 'fSort'].forEach(function (id) {
+    ['fSearch', 'fProto', 'fCountry', 'fNet', 'fTls', 'fSource', 'fSort'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.tagName === 'SELECT') el.selectedIndex = 0; else if (el) el.value = '';
     });
@@ -332,7 +381,7 @@ function bindHome() {
 document.addEventListener('DOMContentLoaded', function () {
   initLang();
   if (document.getElementById('rows')) bindHome();
-  if (document.getElementById('statRows')) loadStatsPage();
+  if (document.getElementById('srcRows')) loadStatsPage();
 });
 
 function loadStatsPage() {
