@@ -174,6 +174,78 @@ Deployed proxylane triggers
 
 ---
 
+## 步骤 7B · 用 Dashboard「Continue with GitHub」部署（可选方式）
+
+> 适合不想用命令行的人。效果和 `npm run deploy` 完全一样，额外好处是
+> **之后每次 push 到 main 会自动重新部署**。
+>
+> ⚠️ **前提**：`wrangler.toml` 里的 KV id 必须已经是真实值，否则第一次构建必失败
+> （报 `KV namespace "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" not found`）。
+> 还没建 KV 的，先回到步骤 2 和 3。
+
+进入 Workers & Pages → **创建应用**，然后：
+
+### 1. 选入口
+
+点 **Continue with GitHub**。
+
+- ❌ 不要选「从 Hello World! 开始」「选择模板」「Upload your static files」
+- 尤其 **不要选 Upload your static files** —— 那会建一个纯静态站点，本项目所有 `/v1/*` API 全部失效
+  （页面是由 Worker 的 `[assets]` 托管的，必须走 Worker）
+
+### 2. 授权并选仓库
+
+- 首次会跳转 GitHub 授权，点 **Install & Authorize**，可以只授权 `proxylane` 这一个仓库
+- 回来选仓库：`yss161/proxylane`
+- 分支：`main`
+
+### 3. 构建配置（关键，照抄）
+
+| 字段 | 填什么 | 说明 |
+|---|---|---|
+| 项目名称 / Worker name | `proxylane` | **必须和 wrangler.toml 里的 name 完全一致**，否则会部署到另一个 Worker |
+| 生产分支 | `main` | |
+| 根目录 / Root directory | 留空 | 仓库根目录 |
+| 构建命令 / Build command | `npm install` | 或直接留空；**不要**填 `npm run build`（本项目没有 build 脚本） |
+| 部署命令 / Deploy command | `npx wrangler deploy` | 默认值就是这个 |
+
+环境变量/Secrets 这一栏**不用加任何东西** —— 项目的变量都在 `wrangler.toml` 的 `[vars]` 里。
+
+### 4. 看首次构建
+
+点 **Deploy**，等 1~3 分钟。成功日志大致是：
+
+%%%
+Installing dependencies... npm install
+Cloning repository...
+Running deploy command: npx wrangler deploy
+Uploaded proxylane (x.xx sec)
+Deployed proxylane triggers
+  https://proxylane.<子域>.workers.dev
+  proxy.hanser.cv (custom domain)
+Success: Build completed
+%%%
+
+失败时的对照：
+
+| 构建日志里的报错 | 原因 | 解决 |
+|---|---|---|
+| `KV namespace "..." not found` | `wrangler.toml` 的 id 还是占位符 | 步骤 2、3 |
+| `npm run build` not found | 构建命令填成了 `npm run build` | 改成 `npm install` 或留空 |
+| `Missing entry-point` / 找不到 src/index.js | 根目录设错了 | 根目录留空 |
+| `hostname already in use` / `zone not found` | `proxy.hanser.cv` 已被占用，或 zone 不在本账号 | 见下面第 5 点 |
+
+### 5. 绑定自定义域名
+
+`wrangler.toml` 里已有 `[[routes]]`，首次部署会自动尝试绑定。部署完去
+**Workers & Pages → proxylane → Settings → Domains & Routes** 确认能看到 `proxy.hanser.cv`。
+
+如果没绑上（或报 hostname 冲突），在这里手动加：
+
+**Add → Custom domain → 输入 `proxy.hanser.cv` → Add domain**，然后等状态变成 **Active**（1~5 分钟签证书）。
+
+---
+
 ## 步骤 8 · 验证上线
 
 `%bash
