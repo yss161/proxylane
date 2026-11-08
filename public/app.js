@@ -64,7 +64,7 @@ var I18N = {
     rows: '条结果',
     foot_sources: '数据来源',
     foot_built: '由 Cloudflare Workers 驱动 · 每小时自动刷新',
-    booting: '首次初始化中，约 1 分钟后刷新',
+    booting: '节点数据准备中，正在自动重试…',
     lang_label: 'EN',
   },
   en: {
@@ -131,7 +131,7 @@ var I18N = {
     rows: 'results',
     foot_sources: 'Data sources',
     foot_built: 'Powered by Cloudflare Workers · refreshed hourly',
-    booting: 'First boot in progress, retry in ~1 minute',
+    booting: 'Node data is being prepared, retrying automatically…',
     lang_label: '中',
   },
 };
@@ -215,14 +215,33 @@ function fmtTime(iso) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
 
+// 数据还没准备好时自动重试：最多 60 次，前 6 次每 5 秒，之后每 15 秒
+var retryCount = { list: 0, stats: 0 };
+
+function scheduleRetry(kind, fn, page) {
+  if (retryCount[kind] >= 60) return;
+  retryCount[kind]++;
+  var wait = retryCount[kind] <= 6 ? 5000 : 15000;
+  setTimeout(function () {
+    if (page && !document.getElementById(page)) return;
+    fn();
+  }, wait);
+}
+
 function loadStats() {
   fetch('/v1/stats').then(function (r) { return r.json(); }).then(function (d) {
-    if (!d || !d.ok) return;
+    if (!d || !d.ok) {
+      scheduleRetry('stats', loadStats, 'stTotal');
+      return;
+    }
+    retryCount.stats = 0;
     setText('stTotal', d.total);
     setText('stVerified', d.verified);
     setText('stCountries', d.top_countries);
     setText('stUpdated', fmtTime(d.updated_at));
-  }).catch(function () {});
+  }).catch(function () {
+    scheduleRetry('stats', loadStats, 'stTotal');
+  });
 }
 
 function setText(id, v) {
@@ -281,20 +300,24 @@ function loadList() {
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('loading') + '</td></tr>';
   fetch('/v1/proxies?' + buildQuery()).then(function (r) {
     if (r.status === 503) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('booting') + '</td></tr>';
       state.loading = false;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('booting') + '</td></tr>';
+      scheduleRetry('list', loadList, 'rows');
       return null;
     }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     var total = r.headers.get('x-total-count');
     state.total = total ? Number(total) : 0;
     return r.json();
   }).then(function (d) {
     state.loading = false;
     if (!d) return;
+    retryCount.list = 0;
     renderRows((d && d.data) || []);
   }).catch(function () {
     state.loading = false;
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">error</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="muted">' + t('booting') + '</td></tr>';
+    scheduleRetry('list', loadList, 'rows');
   });
 }
 
