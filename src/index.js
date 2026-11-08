@@ -5,7 +5,7 @@ import { render, FORMATS, FORMAT_PROTOCOLS } from './format.js';
 
 const KEY_POOL = 'pool:v2';
 const KEY_META = 'meta:v2';
-const BUILD = '1.4.0';
+const BUILD = '1.5.0';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -103,6 +103,7 @@ function parseQuery(url) {
     sort: (q.get('sort') || 'quality').toLowerCase(),
     offset: Math.max(0, numOr(q.get('offset'), 0)),
     limit: q.get('limit') ? numOr(q.get('limit'), 0) : 0,
+    interval: q.get('interval') ? numOr(q.get('interval'), 0) : 0,
     shuffle: (function () {
       const raw = q.get('shuffle') !== null ? q.get('shuffle') : q.get('random');
       if (raw === null) return false;
@@ -196,7 +197,7 @@ export default {
         build: BUILD,
         formats: FORMATS,
         protocols: PROTO_NAMES,
-        params: ['q', 'protocol', 'country', 'network', 'security', 'source', 'max_latency', 'verified', 'sort', 'shuffle', 'limit', 'offset', 'format'],
+        params: ['q', 'protocol', 'country', 'network', 'security', 'source', 'max_latency', 'verified', 'sort', 'shuffle', 'interval', 'limit', 'offset', 'format'],
         endpoints: [
           '/v1/proxies',
           '/v1/all.txt',
@@ -400,7 +401,9 @@ export default {
     if (fitted.dropped > 0) headers['x-dropped-unsupported'] = String(fitted.dropped);
     if (isSub) {
       headers['content-disposition'] = 'attachment; filename="proxylane.' + (format === 'clash' ? 'yaml' : format) + '"';
-      headers['profile-update-interval'] = '1';
+      // 告诉客户端多久更新一次订阅（小时）；?interval= 可覆盖，默认 1 小时
+      const intervalHours = q.interval >= 1 ? Math.min(Math.round(q.interval), 168) : 1;
+      headers['profile-update-interval'] = String(intervalHours);
     }
 
     const res = new Response(out.body, { status: 200, headers: headers });

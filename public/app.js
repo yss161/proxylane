@@ -21,6 +21,11 @@ var I18N = {
     stats_verified: '端口已探活',
     stats_countries: '国家/地区',
     stats_updated: '最近刷新',
+    sync_hint: '数据由 GitHub Actions 定时同步（配置为每 30 分钟，可能延迟），页面每 30 秒更新「多久之前」。',
+    just_now: '刚刚',
+    minutes_ago: ' 分钟前',
+    hours_ago: ' 小时前',
+    days_ago: ' 天前',
     filter_title: '搜寻翻墙节点',
     f_search: '关键词',
     f_protocol: '协议',
@@ -49,6 +54,7 @@ var I18N = {
     custom_format: '格式',
     custom_proto: '协议',
     custom_shuffle: '随机分发',
+    custom_interval: '客户端刷新间隔（小时）',
     custom_hint: '开启随机分发后，每次拉取都会换一批节点；同一分钟内结果相同，避免频繁打爆后端。',
     launch_note: '导入后用订阅地址，客户端会自动更新节点',
     open_client: '打开',
@@ -106,6 +112,11 @@ var I18N = {
     stats_verified: 'TCP probed',
     stats_countries: 'Countries',
     stats_updated: 'Last refresh',
+    sync_hint: 'Synced periodically by GitHub Actions (configured every 30 min, may be delayed); this page refreshes the “ago” label every 30s.',
+    just_now: 'just now',
+    minutes_ago: ' min ago',
+    hours_ago: ' h ago',
+    days_ago: ' d ago',
     filter_title: 'Search nodes',
     f_search: 'Keyword',
     f_protocol: 'Protocol',
@@ -134,6 +145,7 @@ var I18N = {
     custom_format: 'Format',
     custom_proto: 'Protocol',
     custom_shuffle: 'Shuffle',
+    custom_interval: 'Client update interval (hours)',
     custom_hint: 'With shuffle on, every pull returns a different batch; within the same minute the result is cached to protect the backend.',
     launch_note: 'After import the client keeps updating nodes from the subscription URL',
     open_client: 'Open',
@@ -199,6 +211,7 @@ function setLang(lang) {
   try { localStorage.setItem('pl_lang', state.lang); } catch (e) {}
   applyI18n();
   if (countriesCache) renderCountryOptions();
+  refreshUpdatedLabels();
 }
 
 function initLang() {
@@ -298,6 +311,8 @@ function customQuery() {
   var sh = document.getElementById('cShuffle');
   if (sh && sh.checked) q += '&shuffle=1';
   if (proto && proto !== 'all') q += '&protocol=' + encodeURIComponent(proto);
+  var iv = parseInt(val('cInterval'), 10);
+  if (isFinite(iv) && iv >= 1) q += '&interval=' + Math.min(iv, 168);
   return q;
 }
 
@@ -397,6 +412,37 @@ function latencyClass(ms) {
   return 'lat-slow';
 }
 
+// 多久之前：让"最近刷新"能一眼看出数据新旧
+function fmtRelative(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  var diff = Date.now() - d.getTime();
+  if (diff < 0) diff = 0;
+  var min = Math.floor(diff / 60000);
+  if (min < 1) return t('just_now');
+  if (min < 60) return min + t('minutes_ago');
+  var hr = Math.floor(min / 60);
+  if (hr < 24) return hr + t('hours_ago');
+  return Math.floor(hr / 24) + t('days_ago');
+}
+
+var lastUpdated = '';
+
+function fmtUpdated(iso) {
+  if (!iso) return '—';
+  var rel = fmtRelative(iso);
+  return fmtTime(iso) + (rel ? ' · ' + rel : '');
+}
+
+// 相对时间每分钟重算，页面对应元素随手更新
+function refreshUpdatedLabels() {
+  if (lastUpdated) {
+    setText('stUpdated', fmtUpdated(lastUpdated));
+    setText('sUpdated', fmtUpdated(lastUpdated));
+  }
+}
+
 function fmtTime(iso) {
   if (!iso) return '—';
   var d = new Date(iso);
@@ -428,7 +474,8 @@ function loadStats() {
     setText('stTotal', d.total);
     setText('stVerified', d.verified);
     setText('stCountries', d.top_countries);
-    setText('stUpdated', fmtTime(d.updated_at));
+    lastUpdated = d.updated_at || '';
+    setText('stUpdated', fmtUpdated(lastUpdated));
   }).catch(function () {
     scheduleRetry('stats', loadStats, 'stTotal');
   });
@@ -605,7 +652,7 @@ function bindHome() {
     launches[L].addEventListener('click', function () { openLaunch(false); });
   }
 
-  var customInputs = ['cLimit', 'cFormat', 'cProto', 'cShuffle'];
+  var customInputs = ['cLimit', 'cFormat', 'cProto', 'cShuffle', 'cInterval'];
   for (var C = 0; C < customInputs.length; C++) {
     var el = document.getElementById(customInputs[C]);
     if (el) {
@@ -675,6 +722,13 @@ document.addEventListener('DOMContentLoaded', function () {
   initLang();
   if (document.getElementById('rows')) bindHome();
   if (document.getElementById('srcRows')) loadStatsPage();
+  // 「多久之前」每 30 秒重算；每 3 分钟重新拉一次统计，好让新同步的时间自动出现
+  setInterval(refreshUpdatedLabels, 30000);
+  setInterval(function () {
+    if (document.hidden) return;
+    if (document.getElementById('rows')) loadStats();
+    if (document.getElementById('srcRows')) loadStatsPage();
+  }, 180000);
 });
 
 function loadStatsPage() {
@@ -683,7 +737,8 @@ function loadStatsPage() {
     setText('sTotal', d.total);
     setText('sVerified', d.verified);
     setText('sCountries', d.top_countries);
-    setText('sUpdated', fmtTime(d.updated_at));
+    lastUpdated = d.updated_at || '';
+    setText('sUpdated', fmtUpdated(lastUpdated));
     setText('sDuration', (d.duration_ms || 0) + ' ms');
     var protos = d.protocols || {};
     var keys = Object.keys(protos);

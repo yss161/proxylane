@@ -126,6 +126,11 @@ r = await call('/v1/all.txt?shuffle=1&limit=5');
 txt = await r.text();
 assert(txt.trim().split('\n').length === 5, '/v1/all.txt?shuffle=1&limit=5');
 
+r = await call('/v1/proxies?format=clash&limit=2&interval=6');
+assert(r.headers.get('profile-update-interval') === '6', 'interval=6 -> profile-update-interval');
+r = await call('/v1/proxies?format=clash&limit=2');
+assert(r.headers.get('profile-update-interval') === '1', '默认 profile-update-interval=1');
+
 r = await call('/v1/proxies?format=clash&shuffle=1&limit=4');
 const shuffledClash = await r.text();
 assert(shuffledClash.indexOf('proxies:') >= 0, 'shuffle + clash 订阅');

@@ -28,6 +28,7 @@
     <div class="card"><div class="stat"><span class="v" id="stCountries">—</span><span class="k" data-i18n="stats_countries">国家/地区</span></div></div>
     <div class="card"><div class="stat"><span class="v" id="stUpdated" style="font-size:15px">—</span><span class="k" data-i18n="stats_updated">最近刷新</span></div></div>
   </div>
+  <p class="pill sync-hint" id="syncHint" data-i18n="sync_hint">数据由 GitHub Actions 定时同步，页面每 30 秒更新一次「多久之前」。</p>
 
   <h2 data-i18n="sub_title">订阅地址</h2>
   <div class="grid grid-4">
@@ -95,6 +96,8 @@
         </select></div>
       <div class="field"><label data-i18n="custom_shuffle">随机分发</label>
         <label class="chk-row"><input type="checkbox" id="cShuffle" checked /> <span class="pill">shuffle</span></label></div>
+      <div class="field"><label data-i18n="custom_interval">客户端刷新间隔（小时）</label>
+        <input id="cInterval" type="number" min="1" max="168" step="1" value="1" /></div>
     </div>
     <div class="urlbox" style="margin-top:10px"><input readonly id="cUrl" /><button class="btn" id="cCopy" data-i18n="copy">复制</button></div>
     <div class="card-actions">

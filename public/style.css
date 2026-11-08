@@ -184,3 +184,6 @@ body.modal-open { overflow: hidden; }
 .custom-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .custom-controls .field input, .custom-controls .field select { min-width: 130px; }
 .chk-row { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--text); height: 34px; }
+
+/* ---------------- 刷新时间提示 ---------------- */
+.sync-hint { margin: -4px 0 18px; }

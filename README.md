@@ -123,7 +123,7 @@ Actions → **sync-kv** → Run workflow。
 | `GET /v1/config` | 站点配置 / 支持格式 / 参数表 |
 | `GET /v1/health` | 存活探针 |
 
-**参数**：`q` `format` `protocol` `country` `network` `security` `source` `max_latency` `verified` `sort` `shuffle` `limit` `offset`
+**参数**：`q` `format` `protocol` `country` `network` `security` `source` `max_latency` `verified` `sort` `shuffle` `interval` `limit` `offset`
 
 **客户端对照**：
 
@@ -153,7 +153,8 @@ Actions → **sync-kv** → Run workflow。
 ```
 
 > `shuffle` 的结果按分钟分桶缓存：同一分钟内命中缓存（快且省 CPU），跨分钟就重新洗牌。
-> 想在页面上直接调数量/格式/协议，首页有「自定义订阅（随机分发）」面板。
+> 想在页面上直接调数量/格式/协议/更新间隔，首页有「自定义订阅（随机分发）」面板。
+> `interval` 控制订阅响应头 `profile-update-interval`（小时），客户端会按这个周期来拉新节点。
 
 ---
 

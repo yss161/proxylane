@@ -58,6 +58,7 @@
       <tr><td>verified</td><td>true / false</td><td>仅 TCP 探活通过的节点</td></tr>
       <tr><td>sort</td><td>quality / latency / country / name / random</td><td>默认 quality</td></tr>
       <tr><td>shuffle</td><td>1 / 0</td><td>随机分发：每次拉取换一批节点（按分钟分桶缓存）</td></tr>
+      <tr><td>interval</td><td>1–168（小时）</td><td>订阅更新间隔，写进 <code>profile-update-interval</code> 响应头，默认 1</td></tr>
       <tr><td>limit</td><td>1–5000</td><td>默认值随格式变化</td></tr>
       <tr><td>offset</td><td>≥0</td><td>分页偏移</td></tr>
     </tbody>
