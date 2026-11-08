@@ -44,6 +44,12 @@ var I18N = {
     launch_title: '一键导入到客户端',
     launch_hint: '点了没反应说明该客户端没装，可用二维码或复制订阅地址',
     launch_open: '打开',
+    custom_title: '自定义订阅（随机分发）',
+    custom_count: '节点数量',
+    custom_format: '格式',
+    custom_proto: '协议',
+    custom_shuffle: '随机分发',
+    custom_hint: '开启随机分发后，每次拉取都会换一批节点；同一分钟内结果相同，避免频繁打爆后端。',
     launch_note: '导入后用订阅地址，客户端会自动更新节点',
     open_client: '打开',
     sort_quality: '质量优先',
@@ -123,6 +129,12 @@ var I18N = {
     launch_title: 'One-click import to client',
     launch_hint: 'Nothing happened? The client is probably not installed — use the QR code or copy the URL instead',
     launch_open: 'Open',
+    custom_title: 'Custom subscription (random)',
+    custom_count: 'Node count',
+    custom_format: 'Format',
+    custom_proto: 'Protocol',
+    custom_shuffle: 'Shuffle',
+    custom_hint: 'With shuffle on, every pull returns a different batch; within the same minute the result is cached to protect the backend.',
     launch_note: 'After import the client keeps updating nodes from the subscription URL',
     open_client: 'Open',
     sort_quality: 'Quality',
@@ -160,7 +172,7 @@ var I18N = {
   },
 };
 
-var state = { lang: 'zh', page: 0, pageSize: 50, total: 0, loading: false };
+var state = { lang: 'zh', page: 0, pageSize: 50, total: 0, loading: false, launchShare: '' };
 
 function t(key) {
   var d = I18N[state.lang] || I18N.zh;
@@ -276,9 +288,32 @@ function b64url(s) {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function launchTargets() {
-  var clashUrl = location.origin + '/v1/proxies?format=clash&verified=true&limit=500';
-  var shareUrl = location.origin + '/v1/proxies?format=base64&verified=true&limit=300';
+// 自定义订阅：数量 / 格式 / 协议 / 随机分发
+function customQuery() {
+  var n = parseInt(val('cLimit'), 10);
+  if (!isFinite(n) || n < 1) n = 50;
+  if (n > 5000) n = 5000;
+  var proto = val('cProto');
+  var q = '/v1/proxies?verified=true&limit=' + n;
+  var sh = document.getElementById('cShuffle');
+  if (sh && sh.checked) q += '&shuffle=1';
+  if (proto && proto !== 'all') q += '&protocol=' + encodeURIComponent(proto);
+  return q;
+}
+
+function customUrl(format) {
+  var fmt = format || val('cFormat') || 'base64';
+  return location.origin + customQuery() + '&format=' + encodeURIComponent(fmt);
+}
+
+function refreshCustomUrl() {
+  var input = document.getElementById('cUrl');
+  if (input) input.value = customUrl();
+}
+
+function launchTargets(useCustom) {
+  var clashUrl = useCustom ? customUrl('clash') : location.origin + '/v1/proxies?format=clash&verified=true&limit=500';
+  var shareUrl = useCustom ? customUrl('base64') : location.origin + '/v1/proxies?format=base64&verified=true&limit=300';
   return [
     { name: 'Clash Verge / Mihomo / FlClash', link: 'clash://install-config?url=' + encodeURIComponent(clashUrl) },
     { name: 'sing-box (SFA / SFI / SFM)', link: 'sing-box://import-remote-profile?url=' + encodeURIComponent(shareUrl) },
@@ -288,11 +323,14 @@ function launchTargets() {
   ];
 }
 
-function openLaunch() {
+function openLaunch(useCustom) {
   var modal = document.getElementById('launchModal');
   var list = document.getElementById('launchList');
   if (!modal || !list) return;
-  var targets = launchTargets();
+  state.launchShare = useCustom === true
+    ? customUrl('base64')
+    : location.origin + '/v1/proxies?format=base64&verified=true&limit=300';
+  var targets = launchTargets(useCustom === true);
   var html = '';
   for (var i = 0; i < targets.length; i++) {
     html += '<a class="launch-item" href="' + esc(targets[i].link) + '">';
@@ -564,8 +602,29 @@ function bindHome() {
 
   var launches = document.querySelectorAll('[data-launch]');
   for (var L = 0; L < launches.length; L++) {
-    launches[L].addEventListener('click', openLaunch);
+    launches[L].addEventListener('click', function () { openLaunch(false); });
   }
+
+  var customInputs = ['cLimit', 'cFormat', 'cProto', 'cShuffle'];
+  for (var C = 0; C < customInputs.length; C++) {
+    var el = document.getElementById(customInputs[C]);
+    if (el) {
+      el.addEventListener('change', refreshCustomUrl);
+      el.addEventListener('input', refreshCustomUrl);
+    }
+  }
+  var cCopy = document.getElementById('cCopy');
+  if (cCopy) cCopy.addEventListener('click', function () {
+    var input = document.getElementById('cUrl');
+    if (input && input.value) copyText(input.value);
+  });
+  var cQr = document.getElementById('cQr');
+  if (cQr) cQr.addEventListener('click', function () {
+    var input = document.getElementById('cUrl');
+    if (input && input.value) openQr(input.value, t('qr_sub'));
+  });
+  var cLaunch = document.getElementById('cLaunch');
+  if (cLaunch) cLaunch.addEventListener('click', function () { openLaunch(true); });
 
   var modal = document.getElementById('qrModal');
   if (modal) {
@@ -593,7 +652,7 @@ function bindHome() {
   var launchCopy = document.getElementById('launchCopy');
   if (launchCopy) {
     launchCopy.addEventListener('click', function () {
-      copyText(location.origin + '/v1/proxies?format=base64&verified=true&limit=300');
+      if (state.launchShare) copyText(state.launchShare);
     });
   }
   document.addEventListener('keydown', function (e) {
@@ -608,6 +667,7 @@ function bindHome() {
 
   loadStats();
   loadCountries();
+  refreshCustomUrl();
   loadList();
 }
 

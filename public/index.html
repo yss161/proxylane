@@ -69,6 +69,41 @@
     </div>
   </div>
 
+  <h2 data-i18n="custom_title">自定义订阅（随机分发）</h2>
+  <div class="card">
+    <div class="custom-controls">
+      <div class="field"><label data-i18n="custom_count">节点数量</label>
+        <input id="cLimit" type="number" min="1" max="5000" step="10" value="50" /></div>
+      <div class="field"><label data-i18n="custom_format">格式</label>
+        <select id="cFormat">
+          <option value="base64">base64 · v2rayN / 小火箭</option>
+          <option value="clash">clash · Clash Verge / Mihomo</option>
+          <option value="singbox">sing-box</option>
+          <option value="surge">surge</option>
+          <option value="txt">txt · 分享链接</option>
+        </select></div>
+      <div class="field"><label data-i18n="custom_proto">协议</label>
+        <select id="cProto">
+          <option value="all" data-i18n="all">全部</option>
+          <option value="vless">vless</option>
+          <option value="vmess">vmess</option>
+          <option value="trojan">trojan</option>
+          <option value="ss">ss</option>
+          <option value="hysteria2">hysteria2</option>
+          <option value="tuic">tuic</option>
+          <option value="anytls">anytls</option>
+        </select></div>
+      <div class="field"><label data-i18n="custom_shuffle">随机分发</label>
+        <label class="chk-row"><input type="checkbox" id="cShuffle" checked /> <span class="pill">shuffle</span></label></div>
+    </div>
+    <div class="urlbox" style="margin-top:10px"><input readonly id="cUrl" /><button class="btn" id="cCopy" data-i18n="copy">复制</button></div>
+    <div class="card-actions">
+      <button class="btn ghost" id="cQr" data-i18n="qr">二维码</button>
+      <button class="btn ghost" id="cLaunch" data-i18n="launch">导入客户端</button>
+    </div>
+    <div class="hint" data-i18n="custom_hint">开启随机分发后，每次拉取都会换一批节点；同一分钟内结果相同，避免频繁打爆后端。</div>
+  </div>
+
   <h2 data-i18n="filter_title">搜寻翻墙节点</h2>
   <div class="filters">
     <div class="field grow"><label data-i18n="f_search">关键词</label><input id="fSearch" placeholder="US / vless / reality / sni" size="22" /></div>

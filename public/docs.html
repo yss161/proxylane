@@ -57,6 +57,7 @@
       <tr><td>max_latency</td><td>毫秒</td><td>仅返回有延迟数据且低于该值的条目</td></tr>
       <tr><td>verified</td><td>true / false</td><td>仅 TCP 探活通过的节点</td></tr>
       <tr><td>sort</td><td>quality / latency / country / name / random</td><td>默认 quality</td></tr>
+      <tr><td>shuffle</td><td>1 / 0</td><td>随机分发：每次拉取换一批节点（按分钟分桶缓存）</td></tr>
       <tr><td>limit</td><td>1–5000</td><td>默认值随格式变化</td></tr>
       <tr><td>offset</td><td>≥0</td><td>分页偏移</td></tr>
     </tbody>
@@ -81,7 +82,10 @@ curl "https://proxy.hanser.cv/v1/proxies?q=US&amp;protocol=vless&amp;security=re
 curl "https://proxy.hanser.cv/v1/proxies?format=clash&amp;verified=true&amp;limit=300" -o proxylane.yaml
 
 # 随机一条 vless
-curl "https://proxy.hanser.cv/v1/random?protocol=vless"</pre>
+curl "https://proxy.hanser.cv/v1/random?protocol=vless"
+
+# 随机 50 条、每次拉取换一批（可做订阅）
+curl "https://proxy.hanser.cv/v1/proxies?format=base64&shuffle=1&verified=true&limit=50"</pre>
 
   <h2>客户端兼容性</h2>
   <table class="params">

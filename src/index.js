@@ -5,7 +5,7 @@ import { render, FORMATS, FORMAT_PROTOCOLS } from './format.js';
 
 const KEY_POOL = 'pool:v2';
 const KEY_META = 'meta:v2';
-const BUILD = '1.3.0';
+const BUILD = '1.4.0';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -103,6 +103,11 @@ function parseQuery(url) {
     sort: (q.get('sort') || 'quality').toLowerCase(),
     offset: Math.max(0, numOr(q.get('offset'), 0)),
     limit: q.get('limit') ? numOr(q.get('limit'), 0) : 0,
+    shuffle: (function () {
+      const raw = q.get('shuffle') !== null ? q.get('shuffle') : q.get('random');
+      if (raw === null) return false;
+      return !(raw === 'false' || raw === '0');
+    })(),
     format: (q.get('format') || 'json').toLowerCase(),
   };
 }
@@ -191,7 +196,7 @@ export default {
         build: BUILD,
         formats: FORMATS,
         protocols: PROTO_NAMES,
-        params: ['q', 'protocol', 'country', 'network', 'security', 'source', 'max_latency', 'verified', 'sort', 'limit', 'offset', 'format'],
+        params: ['q', 'protocol', 'country', 'network', 'security', 'source', 'max_latency', 'verified', 'sort', 'shuffle', 'limit', 'offset', 'format'],
         endpoints: [
           '/v1/proxies',
           '/v1/all.txt',
@@ -241,8 +246,18 @@ export default {
       return jsonResponse({ ok: true, updated_at: meta ? meta.updatedAt : null, sources: out }, 200, { 'cache-control': 'public, max-age=300' });
     }
 
+    const q = parseQuery(url);
+    // 随机分发：每次拉订阅都换一批节点。为了不把免费版 CPU 打爆，
+    // 结果按分钟分桶缓存——同一分钟内命中缓存，跨分钟就重新洗牌。
+    const isRandom = q.shuffle || q.sort === 'random';
+    const RANDOM_BUCKET_MS = 60 * 1000;
+    const bucket = Math.floor(Date.now() / RANDOM_BUCKET_MS);
+    const cacheUrl = isRandom
+      ? url.toString() + (url.search ? '&' : '?') + '__bucket=' + bucket
+      : url.toString();
+
     const cache = caches.default;
-    const cacheKey = new Request(url.toString(), { method: 'GET' });
+    const cacheKey = new Request(cacheUrl, { method: 'GET' });
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
 
@@ -326,7 +341,6 @@ export default {
       return jsonResponse({ ok: false, error: 'not_found', hint: 'see /v1/config' }, 404);
     }
 
-    const q = parseQuery(url);
     const qFormat = url.searchParams.get('format');
     let format;
     if (qFormat && FORMATS.indexOf(q.format) >= 0) format = q.format;
@@ -361,7 +375,7 @@ export default {
     if (forcedProtocol) q.protocols = [forcedProtocol];
     let filtered = applyFilters(records, q);
     const fitted = fitFormat(filtered, format);
-    filtered = sortRecords(fitted.list, q.sort);
+    filtered = sortRecords(fitted.list, isRandom ? 'random' : q.sort);
 
     const total = filtered.length;
     const defLimit = DEF_LIMIT[format] || 200;
@@ -373,12 +387,16 @@ export default {
 
     const headers = Object.assign({}, CORS, {
       'content-type': out.contentType,
-      'cache-control': 'public, max-age=300',
+      'cache-control': isRandom ? 'public, max-age=60' : 'public, max-age=300',
       'x-total-count': String(total),
       'x-returned': String(slice.length),
       'x-total-pool': String(records.length),
       'x-robots-tag': 'noindex',
     });
+    if (isRandom) {
+      headers['x-shuffle'] = '1';
+      headers['x-shuffle-bucket'] = String(bucket);
+    }
     if (fitted.dropped > 0) headers['x-dropped-unsupported'] = String(fitted.dropped);
     if (isSub) {
       headers['content-disposition'] = 'attachment; filename="proxylane.' + (format === 'clash' ? 'yaml' : format) + '"';

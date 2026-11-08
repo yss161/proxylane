@@ -107,6 +107,29 @@ assert(j.data.every(function (x) {
   return hay.indexOf('vless') >= 0;
 }), 'q=vless search');
 
+// 随机分发：数量可自定义
+r = await call('/v1/proxies?format=json&shuffle=1&limit=7');
+j = await r.json();
+assert(j.data.length === 7, 'shuffle=1 返回自定义数量 (7)');
+assert(r.headers.get('x-shuffle') === '1', 'shuffle 响应头');
+const firstSet = j.data.map(function (x) { return x.uri; }).join('|');
+
+const realNow = Date.now;
+Date.now = function () { return realNow() + 61000; };
+r = await call('/v1/proxies?format=json&shuffle=1&limit=7');
+j = await r.json();
+const secondSet = j.data.map(function (x) { return x.uri; }).join('|');
+Date.now = realNow;
+assert(j.data.length === 7 && secondSet !== firstSet, '跨时间桶后随机结果变化');
+
+r = await call('/v1/all.txt?shuffle=1&limit=5');
+txt = await r.text();
+assert(txt.trim().split('\n').length === 5, '/v1/all.txt?shuffle=1&limit=5');
+
+r = await call('/v1/proxies?format=clash&shuffle=1&limit=4');
+const shuffledClash = await r.text();
+assert(shuffledClash.indexOf('proxies:') >= 0, 'shuffle + clash 订阅');
+
 r = await call('/v1/proxies?format=json&country=us&limit=10');
 j = await r.json();
 assert(j.data.length === 0 || j.data.every(function (x) { return x.country === 'US'; }), 'country=us filter');
