@@ -187,3 +187,32 @@ body.modal-open { overflow: hidden; }
 
 /* ---------------- 刷新时间提示 ---------------- */
 .sync-hint { margin: -4px 0 18px; }
+
+/* ---------------- 旗帜图片 / 自定义下拉 ---------------- */
+.flag {
+  width: 20px; height: 15px; object-fit: cover; vertical-align: -2px;
+  border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.12); background: #0a0e13;
+}
+.dropdown { position: relative; min-width: 130px; }
+.dropdown-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #0a0e13; color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 9px; font-size: 13px; cursor: pointer; text-align: left;
+}
+.dropdown-btn:hover { border-color: var(--accent); }
+.dropdown-btn .caret { color: var(--muted); font-size: 10px; }
+.dropdown-menu {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0;
+  max-height: 320px; overflow-y: auto; padding: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+.dropdown-item {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  background: transparent; border: 0; color: var(--text); cursor: pointer;
+  padding: 7px 8px; border-radius: 6px; font-size: 13px; text-align: left;
+}
+.dropdown-item:hover, .dropdown-item.active { background: var(--panel-2); }
+.dropdown-item .dd-code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.dropdown-item .dd-count { margin-left: auto; color: var(--muted); font-size: 11px; }
+.country-cell { white-space: nowrap; }

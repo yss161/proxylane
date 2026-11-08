@@ -184,7 +184,7 @@ var I18N = {
   },
 };
 
-var state = { lang: 'zh', page: 0, pageSize: 50, total: 0, loading: false, launchShare: '' };
+var state = { lang: 'zh', page: 0, pageSize: 50, total: 0, loading: false, launchShare: '', country: 'all' };
 
 function t(key) {
   var d = I18N[state.lang] || I18N.zh;
@@ -367,26 +367,62 @@ function closeLaunch() {
 // ---------------- 国家/地区下拉 ----------------
 var countriesCache = null;
 
-// 两位国家码 → 国旗 emoji（区域指示符号）。非两位码返回空串。
+// 旗帜用本地托管的 SVG 图片：Windows 的字体不渲染国旗 emoji，
+// 原生 <select> 又塞不进 <img>，所以国家筛选做成了自定义下拉。
 function ccToFlag(cc) {
   var s = String(cc || '').toUpperCase();
   if (!/^[A-Z]{2}$/.test(s)) return '';
   return String.fromCodePoint(0x1f1e6 + s.charCodeAt(0) - 65, 0x1f1e6 + s.charCodeAt(1) - 65);
 }
 
-function renderCountryOptions() {
-  var sel = document.getElementById('fCountry');
-  if (!sel) return;
-  var cur = sel.value || 'all';
-  var html = '<option value="all">' + t('all') + '</option>';
-  var list = countriesCache || [];
-  for (var i = 0; i < list.length; i++) {
-    var flag = ccToFlag(list[i].cc);
-    html += '<option value="' + list[i].cc + '">' + (flag ? flag + ' ' : '') + list[i].cc + ' · ' + list[i].count + '</option>';
+function flagImg(cc) {
+  var s = String(cc || '').toLowerCase();
+  if (!/^[a-z]{2}$/.test(s)) return '';
+  return '<img class="flag" src="/flags/' + s + '.svg" alt="' + esc(String(cc).toUpperCase()) + '"' +
+    ' width="20" height="15" loading="lazy"' +
+    " onerror=\"this.style.visibility='hidden'\">";
+}
+
+function updateCountryLabel() {
+  var el = document.getElementById('countryLabel');
+  if (!el) return;
+  if (!state.country || state.country === 'all') {
+    el.innerHTML = t('all');
+    return;
   }
-  sel.innerHTML = html;
-  sel.value = cur;
-  if (!sel.value) sel.value = 'all';
+  el.innerHTML = flagImg(state.country) + ' ' + esc(state.country);
+}
+
+function closeCountryMenu() {
+  var menu = document.getElementById('countryMenu');
+  if (menu) menu.hidden = true;
+}
+
+function renderCountryOptions() {
+  var menu = document.getElementById('countryMenu');
+  if (!menu) return;
+  var list = countriesCache || [];
+  var html = '<button type="button" class="dropdown-item' + (state.country === 'all' ? ' active' : '') + '" data-cc="all">' + esc(t('all')) + '</button>';
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    html += '<button type="button" class="dropdown-item' + (state.country === c.cc ? ' active' : '') + '" data-cc="' + c.cc + '">';
+    html += flagImg(c.cc);
+    html += '<span class="dd-code">' + esc(c.cc) + '</span>';
+    html += '<span class="dd-count">' + c.count + '</span>';
+    html += '</button>';
+  }
+  menu.innerHTML = html;
+  var items = menu.querySelectorAll('[data-cc]');
+  for (var j = 0; j < items.length; j++) {
+    items[j].addEventListener('click', function () {
+      state.country = this.getAttribute('data-cc');
+      updateCountryLabel();
+      closeCountryMenu();
+      state.page = 0;
+      loadList();
+    });
+  }
+  updateCountryLabel();
 }
 
 function loadCountries() {
@@ -395,7 +431,7 @@ function loadCountries() {
     countriesCache = d.data || [];
     renderCountryOptions();
   }).catch(function () {
-    scheduleRetry('countries', loadCountries, 'fCountry');
+    scheduleRetry('countries', loadCountries, 'countryBtn');
   });
 }
 
@@ -490,7 +526,7 @@ function buildQuery() {
   var q = [];
   var search = val('fSearch');
   var proto = val('fProto');
-  var country = val('fCountry');
+  var country = state.country || 'all';
   var net = val('fNet');
   var tls = val('fTls');
   var source = val('fSource');
@@ -573,7 +609,7 @@ function renderRows(items) {
       html += '<td class="copy-cell" data-copy="' + esc(uri) + '">' + esc(r.name || '—') + '</td>';
       html += '<td><span class="' + protoClass(r.protocol) + '">' + esc(r.protocol) + '</span></td>';
       html += '<td class="mono">' + esc(server) + '</td>';
-      html += '<td class="mono">' + (r.country ? esc(ccToFlag(r.country) + ' ' + r.country).trim() : '—') + '</td>';
+      html += '<td class="mono country-cell">' + (r.country ? flagImg(r.country) + ' ' + esc(r.country) : '—') + '</td>';
       html += '<td class="mono">' + esc(r.network || '—') + '</td>';
       html += '<td class="mono">' + esc(r.security || '—') + '</td>';
       html += '<td class="mono ' + latencyClass(r.latency_ms) + '">' + fmtLatency(r.latency_ms) + '</td>';
@@ -615,10 +651,12 @@ function bindHome() {
   });
   var reset = document.getElementById('resetBtn');
   if (reset) reset.addEventListener('click', function () {
-    ['fSearch', 'fProto', 'fCountry', 'fNet', 'fTls', 'fSource', 'fSort'].forEach(function (id) {
+    ['fSearch', 'fProto', 'fNet', 'fTls', 'fSource', 'fSort'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.tagName === 'SELECT') el.selectedIndex = 0; else if (el) el.value = '';
     });
+    state.country = 'all';
+    updateCountryLabel();
     var v = document.getElementById('fVerified');
     if (v) v.checked = false;
     state.page = 0;
@@ -646,6 +684,20 @@ function bindHome() {
       });
     })(subQrs[s]);
   }
+
+  var countryBtn = document.getElementById('countryBtn');
+  if (countryBtn) {
+    countryBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var menu = document.getElementById('countryMenu');
+      if (menu) menu.hidden = !menu.hidden;
+    });
+    document.addEventListener('click', function (e) {
+      var dd = document.getElementById('countryDD');
+      if (dd && !dd.contains(e.target)) closeCountryMenu();
+    });
+  }
+  updateCountryLabel();
 
   var launches = document.querySelectorAll('[data-launch]');
   for (var L = 0; L < launches.length; L++) {

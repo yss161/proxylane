@@ -124,7 +124,12 @@
         <option value="socks5">socks5</option>
       </select></div>
     <div class="field"><label data-i18n="f_country">国家/地区</label>
-      <select id="fCountry"><option value="all" data-i18n="all">全部</option></select></div>
+      <div class="dropdown" id="countryDD">
+        <button type="button" class="dropdown-btn" id="countryBtn">
+          <span id="countryLabel">全部</span><span class="caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="countryMenu" hidden></div>
+      </div></div>
     <div class="field"><label data-i18n="f_network">传输</label>
       <select id="fNet">
         <option value="all" data-i18n="all">全部</option>
