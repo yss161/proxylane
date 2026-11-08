@@ -314,6 +314,13 @@ function closeLaunch() {
 // ---------------- 国家/地区下拉 ----------------
 var countriesCache = null;
 
+// 两位国家码 → 国旗 emoji（区域指示符号）。非两位码返回空串。
+function ccToFlag(cc) {
+  var s = String(cc || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(s)) return '';
+  return String.fromCodePoint(0x1f1e6 + s.charCodeAt(0) - 65, 0x1f1e6 + s.charCodeAt(1) - 65);
+}
+
 function renderCountryOptions() {
   var sel = document.getElementById('fCountry');
   if (!sel) return;
@@ -321,7 +328,8 @@ function renderCountryOptions() {
   var html = '<option value="all">' + t('all') + '</option>';
   var list = countriesCache || [];
   for (var i = 0; i < list.length; i++) {
-    html += '<option value="' + list[i].cc + '">' + list[i].cc + ' · ' + list[i].count + '</option>';
+    var flag = ccToFlag(list[i].cc);
+    html += '<option value="' + list[i].cc + '">' + (flag ? flag + ' ' : '') + list[i].cc + ' · ' + list[i].count + '</option>';
   }
   sel.innerHTML = html;
   sel.value = cur;
@@ -472,7 +480,7 @@ function renderRows(items) {
       html += '<td class="copy-cell" data-copy="' + esc(uri) + '">' + esc(r.name || '—') + '</td>';
       html += '<td><span class="' + protoClass(r.protocol) + '">' + esc(r.protocol) + '</span></td>';
       html += '<td class="mono">' + esc(server) + '</td>';
-      html += '<td class="mono">' + esc(r.country || '—') + '</td>';
+      html += '<td class="mono">' + (r.country ? esc(ccToFlag(r.country) + ' ' + r.country).trim() : '—') + '</td>';
       html += '<td class="mono">' + esc(r.network || '—') + '</td>';
       html += '<td class="mono">' + esc(r.security || '—') + '</td>';
       html += '<td class="mono">' + fmtLatency(r.latency_ms) + '</td>';
