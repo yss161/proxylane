@@ -34,6 +34,18 @@ var I18N = {
     f_apply: '搜索',
     f_reset: '重置',
     all: '全部',
+    qr: '二维码',
+    qr_node: '节点二维码',
+    qr_sub: '订阅二维码',
+    qr_hint: '用手机客户端扫码导入',
+    close: '关闭',
+    qr_too_long: '这段链接太长，无法生成二维码',
+    launch: '导入客户端',
+    launch_title: '一键导入到客户端',
+    launch_hint: '点了没反应说明该客户端没装，可用二维码或复制订阅地址',
+    launch_open: '打开',
+    launch_note: '导入后用订阅地址，客户端会自动更新节点',
+    open_client: '打开',
     sort_quality: '质量优先',
     sort_latency: '延迟最低',
     sort_country: '按国家',
@@ -101,6 +113,18 @@ var I18N = {
     f_apply: 'Search',
     f_reset: 'Reset',
     all: 'All',
+    qr: 'QR',
+    qr_node: 'Node QR code',
+    qr_sub: 'Subscription QR code',
+    qr_hint: 'Scan with your phone client to import',
+    close: 'Close',
+    qr_too_long: 'This link is too long to encode as a QR code',
+    launch: 'Open in client',
+    launch_title: 'One-click import to client',
+    launch_hint: 'Nothing happened? The client is probably not installed — use the QR code or copy the URL instead',
+    launch_open: 'Open',
+    launch_note: 'After import the client keeps updating nodes from the subscription URL',
+    open_client: 'Open',
     sort_quality: 'Quality',
     sort_latency: 'Lowest latency',
     sort_country: 'By country',
@@ -162,6 +186,7 @@ function setLang(lang) {
   state.lang = lang === 'en' ? 'en' : 'zh';
   try { localStorage.setItem('pl_lang', state.lang); } catch (e) {}
   applyI18n();
+  if (countriesCache) renderCountryOptions();
 }
 
 function initLang() {
@@ -200,6 +225,117 @@ function copyText(text) {
   } else {
     fallback();
   }
+}
+
+// ---------------- 二维码弹窗 ----------------
+var qrText = '';
+
+function openQr(text, title) {
+  var modal = document.getElementById('qrModal');
+  var holder = document.getElementById('qrHolder');
+  var urlEl = document.getElementById('qrUrl');
+  var titleEl = document.getElementById('qrTitle');
+  if (!modal || !holder || !text) return;
+  qrText = text;
+  if (titleEl) titleEl.textContent = title || t('qr_node');
+  if (urlEl) urlEl.textContent = text;
+  holder.innerHTML = '';
+  try {
+    if (typeof qrcode === 'function') {
+      var qr = qrcode(0, 'L');
+      qr.addData(text);
+      qr.make();
+      holder.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 16, scalable: true });
+    } else {
+      holder.innerHTML = '<span class="muted">qr.js not loaded</span>';
+    }
+  } catch (e) {
+    holder.innerHTML = '<span class="muted">' + t('qr_too_long') + '</span>';
+  }
+  modal.hidden = false;
+  document.body.classList.add('modal-open');
+}
+
+function closeQr() {
+  var modal = document.getElementById('qrModal');
+  if (modal) modal.hidden = true;
+  document.body.classList.remove('modal-open');
+}
+
+// ---------------- 一键拉起客户端 ----------------
+// 深链写法依据客户端官方文档：
+//   clash://install-config?url=      Clash Verge / Mihomo / FlClash
+//   v2rayng://install-config?url=    v2rayNG（Android，host 见 UrlSchemeActivity）
+//   sing-box://import-remote-profile?url=  sing-box 系 GUI
+//   shadowrocket://add/sub://<base64>      Shadowrocket（iOS）
+//   hiddify://import/<url>                 Hiddify
+function b64url(s) {
+  var bytes = new TextEncoder().encode(s);
+  var bin = '';
+  for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function launchTargets() {
+  var clashUrl = location.origin + '/v1/proxies?format=clash&verified=true&limit=500';
+  var shareUrl = location.origin + '/v1/proxies?format=base64&verified=true&limit=300';
+  return [
+    { name: 'Clash Verge / Mihomo / FlClash', link: 'clash://install-config?url=' + encodeURIComponent(clashUrl) },
+    { name: 'sing-box (SFA / SFI / SFM)', link: 'sing-box://import-remote-profile?url=' + encodeURIComponent(shareUrl) },
+    { name: 'Shadowrocket（iOS 小火箭）', link: 'shadowrocket://add/sub://' + b64url(shareUrl) },
+    { name: 'v2rayNG（Android）', link: 'v2rayng://install-config?url=' + encodeURIComponent(shareUrl) },
+    { name: 'Hiddify', link: 'hiddify://import/' + encodeURIComponent(shareUrl) },
+  ];
+}
+
+function openLaunch() {
+  var modal = document.getElementById('launchModal');
+  var list = document.getElementById('launchList');
+  if (!modal || !list) return;
+  var targets = launchTargets();
+  var html = '';
+  for (var i = 0; i < targets.length; i++) {
+    html += '<a class="launch-item" href="' + esc(targets[i].link) + '">';
+    html += '<span class="launch-name">' + esc(targets[i].name) + '</span>';
+    html += '<span class="launch-go">' + t('launch_open') + '</span>';
+    html += '</a>';
+  }
+  list.innerHTML = html;
+  modal.hidden = false;
+  document.body.classList.add('modal-open');
+}
+
+function closeLaunch() {
+  var modal = document.getElementById('launchModal');
+  if (modal) modal.hidden = true;
+  document.body.classList.remove('modal-open');
+}
+
+// ---------------- 国家/地区下拉 ----------------
+var countriesCache = null;
+
+function renderCountryOptions() {
+  var sel = document.getElementById('fCountry');
+  if (!sel) return;
+  var cur = sel.value || 'all';
+  var html = '<option value="all">' + t('all') + '</option>';
+  var list = countriesCache || [];
+  for (var i = 0; i < list.length; i++) {
+    html += '<option value="' + list[i].cc + '">' + list[i].cc + ' · ' + list[i].count + '</option>';
+  }
+  sel.innerHTML = html;
+  sel.value = cur;
+  if (!sel.value) sel.value = 'all';
+}
+
+function loadCountries() {
+  fetch('/v1/countries').then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.ok) return;
+    countriesCache = d.data || [];
+    renderCountryOptions();
+  }).catch(function () {
+    scheduleRetry('countries', loadCountries, 'fCountry');
+  });
 }
 
 function fmtLatency(ms) {
@@ -260,7 +396,7 @@ function buildQuery() {
   var sort = val('fSort');
   if (search) q.push('q=' + encodeURIComponent(search));
   if (proto && proto !== 'all') q.push('protocol=' + encodeURIComponent(proto));
-  if (country) q.push('country=' + encodeURIComponent(country));
+  if (country && country !== 'all') q.push('country=' + encodeURIComponent(country));
   if (net && net !== 'all') q.push('network=' + encodeURIComponent(net));
   if (tls && tls !== 'all') q.push('security=' + encodeURIComponent(tls));
   if (source && source !== 'all') q.push('source=' + encodeURIComponent(source));
@@ -341,13 +477,23 @@ function renderRows(items) {
       html += '<td class="mono">' + esc(r.security || '—') + '</td>';
       html += '<td class="mono">' + fmtLatency(r.latency_ms) + '</td>';
       html += '<td class="muted">' + esc(r.source || '—') + '</td>';
-      html += '<td><button class="btn ghost" data-copy="' + esc(uri) + '">' + t('copy_uri') + '</button></td>';
+      html += '<td class="row-actions">';
+      html += '<button class="btn ghost" data-copy="' + esc(uri) + '">' + t('copy_uri') + '</button>';
+      if (uri) {
+        html += '<button class="btn ghost" data-qr="' + esc(uri) + '">' + t('qr') + '</button>';
+        html += '<a class="btn ghost" href="' + esc(uri) + '">' + t('open_client') + '</a>';
+      }
+      html += '</td>';
       html += '</tr>';
     }
     tbody.innerHTML = html;
     var cells = tbody.querySelectorAll('[data-copy]');
     for (var j = 0; j < cells.length; j++) {
       cells[j].addEventListener('click', function () { copyText(this.getAttribute('data-copy')); });
+    }
+    var qrBtns = tbody.querySelectorAll('[data-qr]');
+    for (var k = 0; k < qrBtns.length; k++) {
+      qrBtns[k].addEventListener('click', function () { openQr(this.getAttribute('data-qr'), t('qr_node')); });
     }
   }
   var pages = Math.max(1, Math.ceil(state.total / state.pageSize));
@@ -391,6 +537,53 @@ function bindHome() {
     })(copies[i]);
   }
 
+  var subQrs = document.querySelectorAll('[data-qr-sub]');
+  for (var s = 0; s < subQrs.length; s++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        openQr(location.origin + btn.getAttribute('data-qr-sub'), t('qr_sub'));
+      });
+    })(subQrs[s]);
+  }
+
+  var launches = document.querySelectorAll('[data-launch]');
+  for (var L = 0; L < launches.length; L++) {
+    launches[L].addEventListener('click', openLaunch);
+  }
+
+  var modal = document.getElementById('qrModal');
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeQr();
+    });
+  }
+  var qrClose = document.getElementById('qrClose');
+  if (qrClose) qrClose.addEventListener('click', closeQr);
+  var qrDone = document.getElementById('qrDone');
+  if (qrDone) qrDone.addEventListener('click', closeQr);
+  var qrCopy = document.getElementById('qrCopy');
+  if (qrCopy) qrCopy.addEventListener('click', function () { if (qrText) copyText(qrText); });
+
+  var launchModal = document.getElementById('launchModal');
+  if (launchModal) {
+    launchModal.addEventListener('click', function (e) {
+      if (e.target === launchModal) closeLaunch();
+    });
+  }
+  var launchClose = document.getElementById('launchClose');
+  if (launchClose) launchClose.addEventListener('click', closeLaunch);
+  var launchDone = document.getElementById('launchDone');
+  if (launchDone) launchDone.addEventListener('click', closeLaunch);
+  var launchCopy = document.getElementById('launchCopy');
+  if (launchCopy) {
+    launchCopy.addEventListener('click', function () {
+      copyText(location.origin + '/v1/proxies?format=base64&verified=true&limit=300');
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeQr(); closeLaunch(); }
+  });
+
   var base = location.origin;
   var inputs = document.querySelectorAll('[data-url]');
   for (var k = 0; k < inputs.length; k++) {
@@ -398,6 +591,7 @@ function bindHome() {
   }
 
   loadStats();
+  loadCountries();
   loadList();
 }
 

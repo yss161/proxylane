@@ -1,11 +1,11 @@
 // src/index.js
 // proxylane — Cloudflare Worker 入口：路由 / 过滤 / 格式化 / 定时刷新
-import { DEFAULT_SOURCES, parseSourcesVar, collectPool, packRecords, unpackRecords, sortRecords, countBy, PROTO_NAMES } from './core.js';
+import { DEFAULT_SOURCES, parseSourcesVar, collectPool, packRecords, unpackRecords, sortRecords, countBy, countryList, PROTO_NAMES } from './core.js';
 import { render, FORMATS, FORMAT_PROTOCOLS } from './format.js';
 
 const KEY_POOL = 'pool:v2';
 const KEY_META = 'meta:v2';
-const BUILD = '1.2.0';
+const BUILD = '1.3.0';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -37,6 +37,7 @@ async function runRefresh(env) {
     concurrency: 5,
   });
   const records = result.records;
+  const countries = countryList(records, 200);
   const meta = {
     updatedAt: new Date().toISOString(),
     durationMs: Date.now() - started,
@@ -46,7 +47,8 @@ async function runRefresh(env) {
     networks: countBy(records, 'net'),
     security: countBy(records, 'tls'),
     verified: records.filter(function (r) { return r.verified; }).length,
-    countries: Object.keys(countBy(records, 'cc')).length,
+    countries: countries.length,
+    countryList: countries,
     sources: result.metas,
     build: BUILD,
   };
@@ -204,6 +206,7 @@ export default {
           '/v1/socks5.txt',
           '/v1/random',
           '/v1/stats',
+          '/v1/countries',
           '/v1/sources',
           '/v1/health',
         ],
@@ -264,12 +267,32 @@ export default {
         protocols: meta.protocols || {},
         networks: meta.networks || {},
         security: meta.security || {},
-        top_countries: meta.countries || 0,
+        top_countries: meta.countryList ? meta.countryList.length : (meta.countries || 0),
+        country_list: meta.countryList || [],
         sources: meta.sources || [],
         build: BUILD,
       }, 200, { 'cache-control': 'public, max-age=60' });
       ctx.waitUntil(cache.put(cacheKey, statsRes.clone()));
       return statsRes;
+    }
+
+    // ---- /v1/countries：前端国家下拉框用，优先读 meta ----
+    if (path === '/v1/countries') {
+      const meta = await loadMeta(env);
+      let list = (meta && meta.countryList) || [];
+      if (!list.length) {
+        // 旧版 meta 没有 countryList，先从节点池现算（结果会缓存 5 分钟，
+        // 下次同步写入 countryList 后就走快路径了）
+        const pool = await loadPool(env);
+        if (pool) list = countryList(pool, 200);
+      }
+      const countriesRes = jsonResponse({
+        ok: true,
+        total: list.length,
+        data: list,
+      }, 200, { 'cache-control': 'public, max-age=300' });
+      ctx.waitUntil(cache.put(cacheKey, countriesRes.clone()));
+      return countriesRes;
     }
 
     const records = await loadPool(env);

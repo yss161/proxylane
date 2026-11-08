@@ -11,7 +11,7 @@
 
 import net from 'node:net';
 import fs from 'node:fs/promises';
-import { DEFAULT_SOURCES, collectPool, mergeRecords, sortRecords, packRecords, countBy } from '../src/core.js';
+import { DEFAULT_SOURCES, collectPool, mergeRecords, sortRecords, packRecords, countBy, countryList } from '../src/core.js';
 
 const DRY = process.argv.indexOf('--dry-run') >= 0;
 const VERIFY_LIMIT = Number(process.env.VERIFY_LIMIT || 4000);
@@ -101,6 +101,7 @@ async function main() {
   const alive = await verifyAll(candidates, candidates.length, VERIFY_TIMEOUT_MS, CONCURRENCY);
 
   const merged = sortRecords(mergeRecords(alive), 'latency');
+  const countries = countryList(merged, 200);
   const meta = {
     updatedAt: new Date().toISOString(),
     durationMs: Date.now() - t0,
@@ -110,7 +111,8 @@ async function main() {
     networks: countBy(merged, 'net'),
     security: countBy(merged, 'tls'),
     verified: merged.length,
-    countries: Object.keys(countBy(merged, 'cc')).length,
+    countries: countries.length,
+    countryList: countries,
     sources: pool.metas,
     verifiedBy: 'github-actions-tcp',
     build: 'sync-1.1.0',

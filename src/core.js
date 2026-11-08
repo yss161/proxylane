@@ -748,6 +748,22 @@ export async function collectPool(sources, opts) {
   return { records: merged, metas: metas, rawCount: rawCount };
 }
 
+// 国家/地区清单：[{ cc: 'US', count: 210 }, ...]，按节点数降序
+export function countryList(list, limit) {
+  const counts = countBy(list, 'cc');
+  const keys = Object.keys(counts);
+  const out = [];
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    if (!k || k === 'unknown' || k.length !== 2) continue;
+    out.push({ cc: k, count: counts[k] });
+  }
+  out.sort(function (a, b) {
+    return b.count - a.count || (a.cc < b.cc ? -1 : a.cc > b.cc ? 1 : 0);
+  });
+  return limit > 0 ? out.slice(0, limit) : out;
+}
+
 export function countBy(list, field) {
   const out = {};
   for (let i = 0; i < list.length; i++) {

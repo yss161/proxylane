@@ -117,7 +117,8 @@ Actions → **sync-kv** → Run workflow。
 | `GET /v1/proxies` | 主接口：关键词搜索 + 全部筛选参数 + 7 种格式 |
 | `GET /v1/all.txt` `/v1/ss.txt` `/v1/vmess.txt` `/v1/vless.txt` `/v1/trojan.txt` `/v1/hysteria2.txt` | 纯文本分享链接 |
 | `GET /v1/random` | 随机一条（`?format=json` 返回结构化） |
-| `GET /v1/stats` | 总量 / 协议分布 / 来源健康 |
+| `GET /v1/stats` | 总量 / 协议分布 / 国家清单 / 来源健康 |
+| `GET /v1/countries` | 国家/地区清单及节点数（前端下拉框用） |
 | `GET /v1/sources` | 源清单 + 最近一次抓取结果 |
 | `GET /v1/config` | 站点配置 / 支持格式 / 参数表 |
 | `GET /v1/health` | 存活探针 |
@@ -134,6 +135,9 @@ Actions → **sync-kv** → Run workflow。
 | sing-box | `/v1/proxies?format=singbox&verified=true&limit=300` |
 | Surge | `/v1/proxies?format=surge&verified=true&limit=200` |
 | 自建脚本 | `/v1/all.txt` |
+
+**页面上的导入方式**：每个订阅卡片都能出「二维码」扫码导入，或点「导入客户端」一键拉起 Clash Verge / Mihomo / sing-box / Shadowrocket / v2rayNG / Hiddify；
+列表里每条节点也能单独复制、出二维码、或直接点「打开」交给系统里的客户端处理。
 
 **搜索示例**：
 

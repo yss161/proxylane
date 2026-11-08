@@ -126,3 +126,50 @@ table.params td:first-child { color: #8fd3ff; font-family: ui-monospace, Menlo, 
   font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none;
 }
 .toast.show { opacity: 1; }
+
+/* ---------------- 二维码弹窗 ---------------- */
+.row-actions { display: flex; gap: 6px; white-space: nowrap; }
+.modal[hidden] { display: none; }
+.modal {
+  position: fixed; inset: 0; z-index: 60; padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 8, 12, .72); backdrop-filter: blur(2px);
+}
+.modal-box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px; width: 100%; max-width: 360px; max-height: 92vh; overflow: auto;
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.modal-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.modal-close {
+  background: transparent; border: 0; color: var(--muted); cursor: pointer;
+  font-size: 22px; line-height: 1; padding: 0 4px;
+}
+.modal-close:hover { color: var(--text); }
+.qr-holder {
+  background: #fff; border-radius: 10px; padding: 10px; min-height: 180px;
+  display: flex; align-items: center; justify-content: center;
+}
+.qr-holder svg { width: 100%; height: auto; display: block; }
+.qr-hint { color: var(--muted); font-size: 12px; text-align: center; margin: 10px 0 6px; }
+.qr-url {
+  background: #0a0e13; border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+  margin: 0 0 12px; font-size: 11px; color: #8fd3ff; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all; max-height: 96px; overflow: auto;
+}
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+body.modal-open { overflow: hidden; }
+.urlbox { flex-wrap: wrap; }
+
+/* ---------------- 卡片操作 / 一键导入 ---------------- */
+.card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.card-actions .btn { flex: 1 1 auto; }
+.row-actions .btn, .row-actions a.btn { text-decoration: none; display: inline-block; }
+.launch-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.launch-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel-2); color: var(--text); font-size: 13px;
+}
+.launch-item:hover { border-color: var(--accent); text-decoration: none; }
+.launch-go { color: var(--accent); font-size: 12px; white-space: nowrap; }

@@ -142,6 +142,14 @@ r = await call('/v1/sources');
 j = await r.json();
 assert(j.ok && j.sources.length >= 4, '/v1/sources');
 
+r = await call('/v1/countries');
+j = await r.json();
+assert(j.ok && Array.isArray(j.data) && j.data.length > 0 && /^[A-Z]{2}$/.test(j.data[0].cc) && j.data[0].count > 0, '/v1/countries list');
+const countryCodes = j.data.map(function (x) { return x.cc; });
+r = await call('/v1/proxies?format=json&country=' + countryCodes[0] + '&limit=5');
+j = await r.json();
+assert(j.data.length > 0 && j.data.every(function (x) { return x.country === countryCodes[0]; }), 'filter by country from list');
+
 r = await call('/v1/random?protocol=ss');
 txt = await r.text();
 assert(/^(ss|ssr|vmess|vless|trojan|hysteria2|hy2|tuic|anytls|socks5):\/\//.test(txt.trim()) || txt.trim().length > 0, '/v1/random -> share uri');
