@@ -238,12 +238,38 @@ export default {
       return jsonResponse({ ok: true, updated_at: meta ? meta.updatedAt : null, sources: out }, 200, { 'cache-control': 'public, max-age=300' });
     }
 
-    const cacheable = path !== '/v1/stats';
     const cache = caches.default;
     const cacheKey = new Request(url.toString(), { method: 'GET' });
-    if (cacheable) {
-      const hit = await cache.match(cacheKey);
-      if (hit) return hit;
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+
+    // ---- /v1/stats：只读 meta 汇总，不解析整个节点池 ----
+    // 免费版 Worker 每次调用只有 10ms CPU，解析全池（数千条 + 完整分享链接）
+    // 会偶发超限导致请求挂起，所以统计走 meta，并缓存 60 秒。
+    if (path === '/v1/stats') {
+      const meta = await loadMeta(env);
+      if (!meta) {
+        return jsonResponse({
+          ok: false,
+          error: 'pool_empty',
+          hint: 'KV 为空。请在 GitHub 仓库 Actions 页手动运行 sync-kv 工作流，或等待下一次定时同步。',
+        }, 503, Object.assign({}, CORS, { 'retry-after': '120' }));
+      }
+      const statsRes = jsonResponse({
+        ok: true,
+        updated_at: meta.updatedAt || null,
+        duration_ms: meta.durationMs || null,
+        total: meta.total || 0,
+        verified: meta.verified || 0,
+        protocols: meta.protocols || {},
+        networks: meta.networks || {},
+        security: meta.security || {},
+        top_countries: meta.countries || 0,
+        sources: meta.sources || [],
+        build: BUILD,
+      }, 200, { 'cache-control': 'public, max-age=60' });
+      ctx.waitUntil(cache.put(cacheKey, statsRes.clone()));
+      return statsRes;
     }
 
     const records = await loadPool(env);
@@ -261,23 +287,6 @@ export default {
         error: 'pool_empty',
         hint: '数据首次初始化中，约 60 秒后重试',
       }, 503, Object.assign({}, CORS, { 'retry-after': '60' }));
-    }
-
-    if (path === '/v1/stats') {
-      const meta = (await loadMeta(env)) || {};
-      return jsonResponse({
-        ok: true,
-        updated_at: meta.updatedAt || null,
-        duration_ms: meta.durationMs || null,
-        total: records.length,
-        verified: records.filter(function (r) { return r.verified; }).length,
-        protocols: countBy(records, 'proto'),
-        networks: countBy(records, 'net'),
-        security: countBy(records, 'tls'),
-        top_countries: Object.keys(countBy(records, 'cc')).filter(function (k) { return k && k !== 'unknown'; }).length,
-        sources: meta.sources || [],
-        build: BUILD,
-      }, 200, { 'cache-control': 'public, max-age=60' });
     }
 
     let forcedProtocol = null;
@@ -354,7 +363,7 @@ export default {
     }
 
     const res = new Response(out.body, { status: 200, headers: headers });
-    if (cacheable && slice.length) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+    if (slice.length) ctx.waitUntil(cache.put(cacheKey, res.clone()));
     return res;
   },
 
