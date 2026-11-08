@@ -351,6 +351,14 @@ function fmtLatency(ms) {
   return ms + 'ms';
 }
 
+// 延迟分档上色：≤150ms 绿、≤400ms 黄、更慢红
+function latencyClass(ms) {
+  if (!ms) return 'lat-none';
+  if (ms <= 150) return 'lat-fast';
+  if (ms <= 400) return 'lat-mid';
+  return 'lat-slow';
+}
+
 function fmtTime(iso) {
   if (!iso) return '—';
   var d = new Date(iso);
@@ -483,7 +491,7 @@ function renderRows(items) {
       html += '<td class="mono">' + (r.country ? esc(ccToFlag(r.country) + ' ' + r.country).trim() : '—') + '</td>';
       html += '<td class="mono">' + esc(r.network || '—') + '</td>';
       html += '<td class="mono">' + esc(r.security || '—') + '</td>';
-      html += '<td class="mono">' + fmtLatency(r.latency_ms) + '</td>';
+      html += '<td class="mono ' + latencyClass(r.latency_ms) + '">' + fmtLatency(r.latency_ms) + '</td>';
       html += '<td class="muted">' + esc(r.source || '—') + '</td>';
       html += '<td class="row-actions">';
       html += '<button class="btn ghost" data-copy="' + esc(uri) + '">' + t('copy_uri') + '</button>';

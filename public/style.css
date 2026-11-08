@@ -173,3 +173,9 @@ body.modal-open { overflow: hidden; }
 }
 .launch-item:hover { border-color: var(--accent); text-decoration: none; }
 .launch-go { color: var(--accent); font-size: 12px; white-space: nowrap; }
+
+/* ---------------- 延迟分档配色 ---------------- */
+.lat-fast { color: var(--accent-2); font-weight: 600; }
+.lat-mid { color: var(--warn); }
+.lat-slow { color: #ff7b72; }
+.lat-none { color: var(--muted); }
