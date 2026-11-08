@@ -5,7 +5,7 @@ import { render, FORMATS, FORMAT_PROTOCOLS } from './format.js';
 
 const KEY_POOL = 'pool:v2';
 const KEY_META = 'meta:v2';
-const BUILD = '1.1.0';
+const BUILD = '1.2.0';
 
 const CORS = {
   'access-control-allow-origin': '*',
