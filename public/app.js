@@ -22,6 +22,10 @@ var I18N = {
     stats_countries: '国家/地区',
     stats_updated: '最近刷新',
     sync_hint: '数据由 GitHub Actions 定时同步（配置为每 30 分钟，可能延迟），页面每 30 秒更新「多久之前」。',
+    stale_before: '数据已经 ',
+    stale_after: ' 小时没有更新了，节点可能大量失效。',
+    stale_link: '去 Actions 手动同步',
+    stale_hours_unit: ' 小时',
     just_now: '刚刚',
     minutes_ago: ' 分钟前',
     hours_ago: ' 小时前',
@@ -113,6 +117,10 @@ var I18N = {
     stats_countries: 'Countries',
     stats_updated: 'Last refresh',
     sync_hint: 'Synced periodically by GitHub Actions (configured every 30 min, may be delayed); this page refreshes the “ago” label every 30s.',
+    stale_before: 'Data has not been updated for ',
+    stale_after: ' hours; many nodes may be dead.',
+    stale_link: 'Run sync manually in Actions',
+    stale_hours_unit: ' h',
     just_now: 'just now',
     minutes_ago: ' min ago',
     hours_ago: ' h ago',
@@ -465,6 +473,23 @@ function fmtRelative(iso) {
 
 var lastUpdated = '';
 
+// 数据太旧时提醒（GitHub Actions 的定时任务会被限流，可能几小时才跑一次）
+var STALE_HOURS = 6;
+var ACTIONS_URL = 'https://github.com/yss161/proxylane/actions/workflows/sync.yml';
+
+function updateStale(iso) {
+  var el = document.getElementById('staleAlert');
+  if (!el) return;
+  if (!iso) { el.hidden = true; return; }
+  var t0 = new Date(iso).getTime();
+  if (isNaN(t0)) { el.hidden = true; return; }
+  var hours = (Date.now() - t0) / 3600000;
+  if (hours < STALE_HOURS) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = '<b>⚠</b> ' + t('stale_before') + Math.floor(hours) + t('stale_after') +
+    ' <a href="' + ACTIONS_URL + '" target="_blank" rel="noopener">' + t('stale_link') + '</a>';
+}
+
 function fmtUpdated(iso) {
   if (!iso) return '—';
   var rel = fmtRelative(iso);
@@ -473,10 +498,10 @@ function fmtUpdated(iso) {
 
 // 相对时间每分钟重算，页面对应元素随手更新
 function refreshUpdatedLabels() {
-  if (lastUpdated) {
-    setText('stUpdated', fmtUpdated(lastUpdated));
-    setText('sUpdated', fmtUpdated(lastUpdated));
-  }
+  if (!lastUpdated) return;
+  setText('stUpdated', fmtUpdated(lastUpdated));
+  setText('sUpdated', fmtUpdated(lastUpdated));
+  updateStale(lastUpdated);
 }
 
 function fmtTime(iso) {
@@ -512,6 +537,7 @@ function loadStats() {
     setText('stCountries', d.top_countries);
     lastUpdated = d.updated_at || '';
     setText('stUpdated', fmtUpdated(lastUpdated));
+    updateStale(lastUpdated);
   }).catch(function () {
     scheduleRetry('stats', loadStats, 'stTotal');
   });
@@ -791,6 +817,7 @@ function loadStatsPage() {
     setText('sCountries', d.top_countries);
     lastUpdated = d.updated_at || '';
     setText('sUpdated', fmtUpdated(lastUpdated));
+    updateStale(lastUpdated);
     setText('sDuration', (d.duration_ms || 0) + ' ms');
     var protos = d.protocols || {};
     var keys = Object.keys(protos);
